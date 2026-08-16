@@ -97,6 +97,9 @@ const custom = calculateItem(base({ jointType: 'CUSTOM', fabricationLengthM: 2.5
 assert.equal(custom.accessoryDetails.flange.status, ACCESSORY_STATUS.INPUT_REQUIRED);
 assert.equal(custom.accessoryDetails.corners.status, ACCESSORY_STATUS.INPUT_REQUIRED);
 assert.equal(custom.accessoryDetails.gasket.status, ACCESSORY_STATUS.INPUT_REQUIRED);
+assert.equal(custom.accessoryDetails.cleats.status, ACCESSORY_STATUS.INPUT_REQUIRED);
+assert.equal(custom.accessoryDetails.silicone.status, ACCESSORY_STATUS.INPUT_REQUIRED);
+assert.equal(custom.accessoryDetails.bolts.status, ACCESSORY_STATUS.INPUT_REQUIRED);
 
 // TEST-A08: Legacy V4 data retains its values and status without invented Fabrication Length.
 const legacy = calculateItem({

@@ -221,15 +221,18 @@
         ? accessoryLine({ unit: 'm', status: ACCESSORY_STATUS.INPUT_REQUIRED, formula: 'Mating-flange rule required', inputs: connectionInputs, basis: 'CUSTOM Joint Type has no configured flange rule.' })
         : accessoryLine({ net: connectionLengthM, unit: 'm', status: legacy ? ACCESSORY_STATUS.LEGACY_ESTIMATE : ACCESSORY_STATUS.CALCULATED, formula: `${perimeterM} m × ${jointCount} joints × 2 mating flanges`, inputs: connectionInputs, basis: legacy ? 'Legacy stored estimate retained.' : 'Joint-Type mating-flange rule.' });
     const flangeLengthM = flange.net;
+    const connectionRuleMissing = jointPerimeter.status === ACCESSORY_STATUS.INPUT_REQUIRED;
     const cornerUnits = dimensions.type === 'rect' ? rules.cornerUnitsPerJoint : 0;
     const corners = dimensions.type !== 'rect'
       ? accessoryLine({ unit: 'pcs', status: ACCESSORY_STATUS.NOT_APPLICABLE, formula: 'Round duct has no rectangular flange corners', inputs: connectionInputs, basis: 'Duct Type dependency.' })
       : cornerUnits === null
         ? accessoryLine({ unit: 'pcs', status: ACCESSORY_STATUS.INPUT_REQUIRED, formula: 'Corner rule required for this Joint Type', inputs: connectionInputs, basis: 'No verified corner rule configured.' })
         : accessoryLine({ net: cornerUnits * jointCount, unit: 'pcs', status: legacy ? ACCESSORY_STATUS.LEGACY_ESTIMATE : ACCESSORY_STATUS.ESTIMATED, formula: `${cornerUnits} corner units/joint × ${jointCount} joints`, inputs: connectionInputs, basis: 'Joint-Type rule; verify against project connection detail.' });
-    const cleats = flangeLengthM === 0 && rules.matingFlanges === false
-      ? accessoryLine({ unit: 'pcs', status: ACCESSORY_STATUS.NOT_APPLICABLE, formula: 'No connection length for this Joint Type', inputs: connectionInputs, basis: 'Joint Type dependency.' })
-      : settings.cleatSpacing === null
+    const cleats = connectionRuleMissing
+      ? accessoryLine({ unit: 'pcs', status: ACCESSORY_STATUS.INPUT_REQUIRED, formula: 'Connection Length rule required before Cleat calculation', inputs: connectionInputs, basis: 'Cleats cannot be derived without a verified connection-length rule.' })
+      : flangeLengthM === 0 && rules.matingFlanges === false
+        ? accessoryLine({ unit: 'pcs', status: ACCESSORY_STATUS.NOT_APPLICABLE, formula: 'No connection length for this Joint Type', inputs: connectionInputs, basis: 'Joint Type dependency.' })
+        : settings.cleatSpacing === null
         ? accessoryLine({ unit: 'pcs', status: ACCESSORY_STATUS.INPUT_REQUIRED, formula: 'Cleat Spacing is required', inputs: connectionInputs, basis: 'Connection Length ÷ Cleat Spacing cannot be evaluated.' })
         : accessoryLine({ net: Math.ceil(flangeLengthM / (settings.cleatSpacing * UNIT_FACTORS.mmToM)), unit: 'pcs', status: legacy ? ACCESSORY_STATUS.LEGACY_ESTIMATE : ACCESSORY_STATUS.ESTIMATED, formula: `ceil(${flangeLengthM} m ÷ ${settings.cleatSpacing} mm)`, inputs: `${connectionInputs}; Cleat Spacing=${settings.cleatSpacing} mm`, basis: 'Spacing-based estimate; no Pressure Class-specific rule is configured.' });
     const gasketRequired = rules.gasketRequired;
@@ -238,14 +241,18 @@
       : gasketRequired === null
         ? { required: null, ...accessoryLine({ unit: 'm', status: ACCESSORY_STATUS.INPUT_REQUIRED, formula: 'Gasket rule required', inputs: connectionInputs, basis: 'CUSTOM Joint Type has no verified gasket rule.' }) }
         : { required: true, ...accessoryLine({ net: flangeLengthM, unit: 'm', status: legacy ? ACCESSORY_STATUS.LEGACY_ESTIMATE : ACCESSORY_STATUS.CALCULATED, formula: `${flangeLengthM} m connection length + 0 m accessory waste`, inputs: connectionInputs, basis: 'Joint-Type gasket rule; no accessory waste rate assumed.' }) };
-    const silicone = flangeLengthM === 0 && rules.matingFlanges === false
-      ? accessoryLine({ unit: 'tubes', status: ACCESSORY_STATUS.NOT_APPLICABLE, formula: 'No connection length for this Joint Type', inputs: connectionInputs, basis: 'Joint Type dependency.' })
-      : settings.silCoverage === null
+    const silicone = connectionRuleMissing
+      ? accessoryLine({ unit: 'tubes', status: ACCESSORY_STATUS.INPUT_REQUIRED, formula: 'Connection Length rule required before Silicone calculation', inputs: connectionInputs, basis: 'Silicone cannot be derived without a verified connection-length rule.' })
+      : flangeLengthM === 0 && rules.matingFlanges === false
+        ? accessoryLine({ unit: 'tubes', status: ACCESSORY_STATUS.NOT_APPLICABLE, formula: 'No connection length for this Joint Type', inputs: connectionInputs, basis: 'Joint Type dependency.' })
+        : settings.silCoverage === null
         ? accessoryLine({ unit: 'tubes', status: ACCESSORY_STATUS.INPUT_REQUIRED, formula: 'Silicone coverage rate is required', inputs: connectionInputs, basis: 'No global silicone rate is assumed.' })
         : accessoryLine({ net: Math.ceil(flangeLengthM / settings.silCoverage), unit: 'tubes', status: legacy ? ACCESSORY_STATUS.LEGACY_ESTIMATE : ACCESSORY_STATUS.ESTIMATED, formula: `ceil(${flangeLengthM} m ÷ ${settings.silCoverage} m/tube) + 0 tubes accessory waste`, inputs: `${connectionInputs}; Silicone Coverage=${settings.silCoverage} m/tube`, basis: 'User/project allowance; verify technical data.' });
     const bolts = legacy
       ? accessoryLine({ net: cleats.net, unit: 'sets', status: ACCESSORY_STATUS.LEGACY_ESTIMATE, formula: 'Legacy stored value retained', inputs: connectionInputs, basis: 'Legacy compatibility only; Bolts = Cleats is not a universal engineering rule.' })
-      : flangeLengthM === 0 && rules.boltRule === 'NOT_APPLICABLE'
+      : connectionRuleMissing
+        ? accessoryLine({ unit: 'sets', status: ACCESSORY_STATUS.INPUT_REQUIRED, formula: 'Connection Length rule required before Bolt calculation', inputs: connectionInputs, basis: 'Bolts cannot be derived without a verified connection-length rule.' })
+        : flangeLengthM === 0 && rules.boltRule === 'NOT_APPLICABLE'
         ? accessoryLine({ unit: 'sets', status: ACCESSORY_STATUS.NOT_APPLICABLE, formula: 'Bolts not applicable for this Joint Type', inputs: connectionInputs, basis: 'Joint-Type bolt rule.' })
         : jointModel.boltSpacingMm === null
           ? accessoryLine({ unit: 'sets', status: ACCESSORY_STATUS.INPUT_REQUIRED, formula: 'Bolt Spacing is required', inputs: connectionInputs, basis: 'No verified bolt rule without Bolt Spacing.' })
