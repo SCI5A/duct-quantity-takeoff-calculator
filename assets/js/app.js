@@ -68,7 +68,7 @@
       insTh: readValue('insTh', 'سماكة العزل'),
       jointCountMode,
       jointType: $('jointType').value,
-      fabricationLengthM: jointCountMode === 'AUTO' ? readValue('fabricationLength', 'طول التصنيع') : optionalValue('fabricationLength', 'طول التصنيع'),
+      fabricationLengthM: jointCountMode !== 'MANUAL' ? readValue('fabricationLength', 'طول التصنيع') : optionalValue('fabricationLength', 'طول التصنيع'),
       manualJointCount: jointCountMode === 'MANUAL' ? readValue('manualJointCount', 'عدد الوصلات اليدوي') : optionalValue('manualJointCount', 'عدد الوصلات اليدوي'),
       boltSpacing: optionalValue('boltSpacing', 'تباعد البراغي'),
       pressureClass: $('pressureClass').value || null,
@@ -179,7 +179,7 @@
   function clearForm() {
     ['w', 'h', 'd', 'l', 'fabricationLength', 'manualJointCount', 'boltSpacing'].forEach(id => { $(id).value = ''; });
     $('qty').value = '1';
-    $('jointCountMode').value = 'AUTO';
+    $('jointCountMode').value = 'PER_RUN';
     $('jointType').value = '';
     $('pressureClass').value = '';
     updateJointFields();
@@ -249,7 +249,7 @@
       const size = item.type === 'rect' ? `${item.widthMm} × ${item.heightMm} mm` : `Ø ${item.diameterMm} mm`;
       [
         index + 1, item.type === 'rect' ? 'مستطيل' : 'دائري', size, format(item.lengthM), item.quantity,
-        display(item.sectionCount), item.joints, item.jointCountSource, item.jointType,
+        display(item.sectionCount), item.joints, item.jointBasis || item.jointCountMode, item.jointCountSource, item.jointType,
         format(item.netArea), format(item.ductWasteArea), format(item.procurementDuctArea),
         format(item.netInsulationArea), format(item.insulationWasteArea), format(item.procurementInsulationArea),
         format(item.adhesive), format(item.tape), `${format(item.flange)} (${item.flangeStatus})`, `${format(item.corners, true)} (${item.cornersStatus})`, `${format(item.cleats, true)} (${item.cleatsStatus})`, `${format(item.gasket)} (${item.gasketStatus})`, `${format(item.silicone, true)} (${item.siliconeStatus})`, `${format(item.bolts, true)} (${item.boltsStatus})`, `${format(item.nuts, true)} (${item.nutsStatus})`, `${format(item.washers, true)} (${item.washersStatus})`,
@@ -301,10 +301,32 @@
     $('formulaSubtitle').textContent = `البند ${index + 1}: ${item.type === 'rect' ? `${item.widthMm} × ${item.heightMm} mm` : `Ø ${item.diameterMm} mm`} — ${item.jointType} — ${item.jointCountSource}`;
     const content = $('formulaContent'); content.replaceChildren();
     const perimeterFormula = item.type === 'rect' ? `2 × (${item.widthMm} + ${item.heightMm}) ÷ 1000` : `π × ${item.diameterMm} ÷ 1000`;
+    const basisRows = [formulaRow('Joint Calculation Basis', item.jointBasis || item.jointCountMode, item.jointBasis || item.jointCountMode, item.jointCountSource)];
+    if (item.jointBasis === 'PER_RUN') {
+      basisRows.push(
+        formulaRow('Total Length', `${item.lengthM} × ${item.quantity}`, `${format(item.totalLengthM)} m`, 'PER-RUN INPUT'),
+        formulaRow('Sections Per Run', `ceil(${item.lengthM} ÷ ${display(item.fabricationLengthM)})`, `${display(item.sectionsPerRun)} sections`, 'PER-RUN FABRICATION-SECTION DERIVED'),
+        formulaRow('Joints Per Run', `${display(item.sectionsPerRun)} − 1`, `${display(item.jointsPerRun)} joints`, 'PER-RUN FABRICATION-SECTION DERIVED'),
+        formulaRow('Total Sections', `${display(item.sectionsPerRun)} × ${item.quantity}`, `${display(item.sectionCount)} sections`, 'PER-RUN FABRICATION-SECTION DERIVED'),
+        formulaRow('Total Joints', `${display(item.jointsPerRun)} × ${item.quantity}`, `${item.joints} joints`, item.jointCountSource)
+      );
+    } else if (item.jointBasis === 'GLOBAL') {
+      basisRows.push(
+        formulaRow('Total Length', `${item.lengthM} × ${item.quantity}`, `${format(item.totalLengthM)} m`, 'GLOBAL INPUT'),
+        formulaRow('Total Sections', `ceil(${format(item.totalLengthM)} ÷ ${display(item.fabricationLengthM)})`, `${display(item.sectionCount)} sections`, 'GLOBAL-FABRICATION-SECTION DERIVED'),
+        formulaRow('Total Joints', `${display(item.sectionCount)} − 1`, `${item.joints} joints`, item.jointCountSource)
+      );
+    } else if (item.jointBasis === 'MANUAL') {
+      basisRows.push(
+        formulaRow('Manual Joint Count', '[user value]', `${display(item.manualJointCount)}`, 'MANUAL INPUT'),
+        formulaRow('Total Joints', '[user value]', `${item.joints} joints`, 'MANUAL')
+      );
+    } else {
+      basisRows.push(formulaRow('Total Joints', 'Legacy stored value', `${item.joints} joints`, item.jointCountSource));
+    }
     content.append(
       formulaRow('المحيط', perimeterFormula, `${format(item.perimeterM)} m`, 'CALCULATED'),
-      formulaRow('الأقسام', `ceil(${format(item.lengthM * item.quantity)} ÷ ${display(item.fabricationLengthM)})`, `${display(item.sectionCount)} sections`, item.sectionCount ? 'FABRICATION-SECTION DERIVED' : 'LEGACY ESTIMATE'),
-      formulaRow('عدد الوصلات', item.jointCountMode === 'MANUAL' ? 'Manual Joint Count' : `${display(item.sectionCount)} − 1`, `${item.joints} joints`, item.jointCountSource),
+      ...basisRows,
       formulaRow('صافي مساحة الدكت', `المحيط × ${item.lengthM} × ${item.quantity}`, `${format(item.netArea)} m²`, 'CALCULATED'),
       formulaRow('هالك الدكت', `صافي الدكت × ${item.wasteRate}%`, `${format(item.ductWasteArea)} m²`, 'ESTIMATING ALLOWANCE'),
       formulaRow('توريد الدكت', 'صافي الدكت + هالك الدكت', `${format(item.procurementDuctArea)} m²`, 'PROCUREMENT'),
@@ -327,13 +349,13 @@
   function exportCSV() {
     if (!items.length) { showStatus('أضف بندًا واحدًا على الأقل قبل تصدير CSV.', 'error'); return; }
     const lines = [[
-      '#', 'Type', 'Size', 'Length m', 'Qty', 'Fabrication Length m', 'Sections', 'Joints', 'Joint Source', 'Joint Type',
+      '#', 'Type', 'Size', 'Length m', 'Qty', 'Fabrication Length m', 'Sections', 'Joints', 'Joint Basis', 'Joint Source', 'Joint Type',
       'Net Duct m2', 'Duct Waste m2', 'Procurement Duct m2', 'Net Insulation m2', 'Insulation Waste m2', 'Procurement Insulation m2',
       'Flange m', 'Flange Status', 'Corners', 'Corners Status', 'Cleats', 'Cleats Status', 'Gasket m', 'Gasket Status', 'Silicone tubes', 'Silicone Status', 'Bolts', 'Bolts Status', 'Nuts', 'Nuts Status', 'Washers', 'Washers Status', 'Net Weight kg', 'Procurement Weight kg', 'Sheet Material', 'Sheet Density kg/m3'
     ]];
     items.forEach((item, index) => lines.push([
       index + 1, item.type === 'rect' ? 'Rectangular' : 'Round', item.type === 'rect' ? `${item.widthMm}x${item.heightMm} mm` : `Ø${item.diameterMm} mm`,
-      item.lengthM, item.quantity, item.fabricationLengthM, item.sectionCount, item.joints, item.jointCountSource, item.jointType,
+      item.lengthM, item.quantity, item.fabricationLengthM, item.sectionCount, item.joints, item.jointBasis || item.jointCountMode, item.jointCountSource, item.jointType,
       item.netArea, item.ductWasteArea, item.procurementDuctArea, item.netInsulationArea, item.insulationWasteArea, item.procurementInsulationArea,
       item.flange, item.flangeStatus, item.corners, item.cornersStatus, item.cleats, item.cleatsStatus, item.gasket, item.gasketStatus,
       item.silicone, item.siliconeStatus, item.bolts, item.boltsStatus, item.nuts, item.nutsStatus, item.washers, item.washersStatus,

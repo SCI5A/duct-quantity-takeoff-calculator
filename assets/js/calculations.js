@@ -17,7 +17,7 @@
     NOT_APPLICABLE: 'NOT APPLICABLE',
     LEGACY_ESTIMATE: 'LEGACY ESTIMATE'
   });
-  const JOINT_MODES = Object.freeze({ AUTO: 'AUTO', MANUAL: 'MANUAL', LEGACY: 'LEGACY' });
+  const JOINT_MODES = Object.freeze({ PER_RUN: 'PER_RUN', GLOBAL: 'GLOBAL', MANUAL: 'MANUAL', AUTO: 'PER_RUN', LEGACY: 'LEGACY' });
   const JOINT_TYPES = Object.freeze({
     TDF: Object.freeze({
       id: 'TDF', name: 'TDF', category: 'flanged', status: 'CONFIGURABLE', classification: 'JOINT-TYPE DEPENDENT',
@@ -142,16 +142,23 @@
     return Math.max(1, Math.ceil(total / fabrication));
   }
 
-  function calculateJointCount({ mode, totalLengthM, fabricationLengthM, manualJointCount, legacyJointCount }) {
+  function calculateJointCount({ mode, lengthM, quantity, fabricationLengthM, manualJointCount, legacyJointCount }) {
     if (mode === JOINT_MODES.MANUAL) {
-      return { sectionCount: fabricationLengthM === null ? null : calculateSectionCount(totalLengthM, fabricationLengthM), jointCount: integerAtLeast(manualJointCount, 'Manual joint count', 0), source: 'MANUAL' };
+      return { totalLengthM: lengthM * quantity, sectionsPerRun: null, jointsPerRun: null, sectionCount: null, jointCount: integerAtLeast(manualJointCount, 'Manual joint count', 0), source: 'MANUAL' };
     }
     if (mode === JOINT_MODES.LEGACY) {
       const legacy = integerAtLeast(legacyJointCount, 'Legacy joint count', 0);
-      return { sectionCount: null, jointCount: legacy, source: 'LEGACY_ESTIMATE' };
+      return { totalLengthM: lengthM * quantity, sectionsPerRun: null, jointsPerRun: null, sectionCount: null, jointCount: legacy, source: 'LEGACY_ESTIMATE' };
     }
-    const sectionCount = calculateSectionCount(totalLengthM, fabricationLengthM);
-    return { sectionCount, jointCount: Math.max(0, sectionCount - 1), source: 'FABRICATION-SECTION DERIVED' };
+    const fabrication = positive(fabricationLengthM, 'Fabrication length');
+    if (mode === JOINT_MODES.GLOBAL) {
+      const totalLengthM = lengthM * quantity;
+      const sectionCount = calculateSectionCount(totalLengthM, fabrication);
+      return { totalLengthM, sectionsPerRun: null, jointsPerRun: null, sectionCount, jointCount: Math.max(0, sectionCount - 1), source: 'GLOBAL-FABRICATION-SECTION DERIVED' };
+    }
+    const sectionsPerRun = calculateSectionCount(lengthM, fabrication);
+    const jointsPerRun = Math.max(0, sectionsPerRun - 1);
+    return { totalLengthM: lengthM * quantity, sectionsPerRun, jointsPerRun, sectionCount: sectionsPerRun * quantity, jointCount: jointsPerRun * quantity, source: 'PER-RUN-FABRICATION-SECTION DERIVED' };
   }
 
   function normalizeJointModel(input, dimensions) {
@@ -159,25 +166,25 @@
     if (!explicit) {
       const legacyJointCount = dimensions.joints > 0 ? dimensions.joints : Math.max(0, dimensions.quantity - 1);
       return {
-        mode: JOINT_MODES.LEGACY, jointCountMode: JOINT_MODES.LEGACY, jointType: 'TDF', jointTypeDefinition: JOINT_TYPES.TDF,
-        fabricationLengthM: null, sectionCount: null, jointCount: legacyJointCount, manualJointCount: null,
+        mode: JOINT_MODES.LEGACY, jointBasis: JOINT_MODES.LEGACY, jointCountMode: JOINT_MODES.LEGACY, jointType: 'TDF', jointTypeDefinition: JOINT_TYPES.TDF,
+        fabricationLengthM: null, totalLengthM: dimensions.lengthM * dimensions.quantity, sectionsPerRun: null, jointsPerRun: null, sectionCount: null, jointCount: legacyJointCount, manualJointCount: null,
         jointCountSource: 'LEGACY_ESTIMATE', pressureClass: null, boltSpacingMm: null, boltSize: null, boltLengthMm: null,
         explicit: false
       };
     }
-    const mode = String(input.jointCountMode || JOINT_MODES.AUTO).toUpperCase();
-    if (![JOINT_MODES.AUTO, JOINT_MODES.MANUAL, JOINT_MODES.LEGACY].includes(mode)) throw new Error('Joint count mode is invalid.');
+    const rawMode = String(input.jointBasis || input.jointCountMode || JOINT_MODES.PER_RUN).toUpperCase();
+    const mode = rawMode === 'AUTO' ? JOINT_MODES.PER_RUN : rawMode;
+    if (![JOINT_MODES.PER_RUN, JOINT_MODES.GLOBAL, JOINT_MODES.MANUAL, JOINT_MODES.LEGACY].includes(mode)) throw new Error('Joint calculation basis is invalid.');
     const jointTypeDefinition = normalizeJointType(input.jointType || (mode === JOINT_MODES.LEGACY ? 'TDF' : null));
-    const totalLengthM = dimensions.lengthM * dimensions.quantity;
     const fabricationLengthM = optionalPositive(input.fabricationLengthM ?? input.fabricationLength, 'Fabrication length');
     const manualJointCount = optionalIntegerAtLeast(input.manualJointCount, 'Manual joint count', 0);
-    if (mode === JOINT_MODES.AUTO && fabricationLengthM === null) throw new Error('Fabrication length is required for automatic joint calculation.');
+    if ((mode === JOINT_MODES.PER_RUN || mode === JOINT_MODES.GLOBAL) && fabricationLengthM === null) throw new Error('Fabrication length is required for automatic joint calculation.');
     if (mode === JOINT_MODES.MANUAL && manualJointCount === null) throw new Error('Manual joint count is required in MANUAL mode.');
     const legacyJointCount = optionalIntegerAtLeast(input.jointCount ?? input.joints ?? dimensions.joints, 'Legacy joint count', 0) ?? dimensions.joints;
-    const counts = calculateJointCount({ mode, totalLengthM, fabricationLengthM, manualJointCount, legacyJointCount });
+    const counts = calculateJointCount({ mode, lengthM: dimensions.lengthM, quantity: dimensions.quantity, fabricationLengthM, manualJointCount, legacyJointCount });
     return {
-      mode, jointCountMode: mode, jointType: jointTypeDefinition.id, jointTypeDefinition, jointClassification: jointTypeDefinition.classification,
-      fabricationLengthM, sectionCount: counts.sectionCount, jointCount: counts.jointCount,
+      mode, jointBasis: mode, jointCountMode: mode, jointType: jointTypeDefinition.id, jointTypeDefinition, jointClassification: jointTypeDefinition.classification,
+      fabricationLengthM, totalLengthM: counts.totalLengthM, sectionsPerRun: counts.sectionsPerRun, jointsPerRun: counts.jointsPerRun, sectionCount: counts.sectionCount, jointCount: counts.jointCount,
       manualJointCount, jointCountSource: counts.source, pressureClass: input.pressureClass || null,
       boltSpacingMm: optionalPositive(input.boltSpacing, 'Bolt spacing'),
       boltSize: input.boltSize || null,
