@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="العرض التعليمي لحاسبة كميات الدكت وملحقاتها">
+  <title>العرض التعليمي — حاسبة كميات الدكت وملحقاته</title>
+  <link rel="stylesheet" href="presentation.css">
+</head>
+<body>
+  <header class="presentation-header">
+    <div class="header-copy">
+      <p class="eyebrow">DUCT QUANTITY &amp; ACCESSORIES CALCULATOR</p>
+      <h1>العرض التعليمي</h1>
+      <p>شرح عملي لمهندسي التكييف من إعداد معدلات الاستهلاك إلى BOQ والتصدير.</p>
+    </div>
+    <a class="back-button" href="../index.html">العودة إلى الحاسبة</a>
+  </header>
+
+  <main class="presentation-shell">
+    <section class="viewer-card" aria-label="عارض الشرائح">
+      <div class="viewer-toolbar">
+        <div class="slide-counter" id="slideCounter" aria-live="polite">الشريحة 1 من 11</div>
+        <div class="toolbar-actions">
+          <button class="control-button" id="fullscreenButton" type="button" title="ملء الشاشة">ملء الشاشة</button>
+          <button class="control-button" id="autoplayButton" type="button" title="تشغيل العرض تلقائيًا">تشغيل تلقائي</button>
+          <button class="control-button secondary-control" id="stopButton" type="button" title="إيقاف العرض التلقائي" disabled>إيقاف</button>
+        </div>
+      </div>
+
+      <div class="stage" id="stage" tabindex="0" aria-label="منطقة عرض الشريحة">
+        <button class="stage-arrow previous" id="previousButton" type="button" aria-label="الشريحة السابقة">‹</button>
+        <img id="slideImage" class="slide-image" src="slides/01.webp" alt="الشريحة 1 من العرض التعليمي" fetchpriority="high">
+        <button class="stage-arrow next" id="nextButton" type="button" aria-label="الشريحة التالية">›</button>
+        <div class="loading-indicator" id="loadingIndicator" aria-hidden="true">جارٍ تحميل الشريحة…</div>
+      </div>
+
+      <div class="progress-track" aria-label="تقدم العرض"><span id="progressBar"></span></div>
+
+      <div class="navigation-row">
+        <button class="nav-button" id="previousButtonBottom" type="button">السابق</button>
+        <p class="keyboard-hint">← → للتنقل · Space للشريحة التالية · F لملء الشاشة</p>
+        <button class="nav-button primary-button" id="nextButtonBottom" type="button">التالي</button>
+      </div>
+    </section>
+
+    <section class="thumbnail-section" aria-labelledby="thumbnailTitle">
+      <div class="thumbnail-heading">
+        <h2 id="thumbnailTitle">شرائح العرض</h2>
+        <p>اختر أي شريحة للانتقال إليها مباشرة.</p>
+      </div>
+      <div class="thumbnails" id="thumbnails"></div>
+    </section>
+  </main>
+
+  <footer class="presentation-footer">Duct Quantity &amp; Accessories Calculator — GitHub Pages</footer>
+  <script src="presentation.js"></script>
+</body>
+</html>
