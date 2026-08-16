@@ -13,9 +13,9 @@
   const ACCESSORY_STATUS = Object.freeze({
     CALCULATED: 'CALCULATED',
     ESTIMATED: 'ESTIMATED',
-    INPUT_REQUIRED: 'INPUT REQUIRED',
-    NOT_APPLICABLE: 'NOT APPLICABLE',
-    LEGACY_ESTIMATE: 'LEGACY ESTIMATE'
+    INPUT_REQUIRED: 'INPUT_REQUIRED',
+    NOT_APPLICABLE: 'NOT_APPLICABLE',
+    LEGACY_ESTIMATE: 'LEGACY_ESTIMATE'
   });
   const JOINT_MODES = Object.freeze({ PER_RUN: 'PER_RUN', GLOBAL: 'GLOBAL', MANUAL: 'MANUAL', AUTO: 'PER_RUN', LEGACY: 'LEGACY' });
   const JOINT_TYPES = Object.freeze({
@@ -195,63 +195,76 @@
 
   function calculateJointPerimeter(perimeterM, jointCount, jointTypeDefinition) {
     const count = integerAtLeast(jointCount, 'Joint count', 0);
-    if (!jointTypeDefinition.calculationRules.matingFlanges) return { value: 0, status: ACCESSORY_STATUS.NOT_APPLICABLE, formula: 'No mating-flange rule for this joint type.' };
+    if (jointTypeDefinition.calculationRules.matingFlanges === false) return { value: 0, status: ACCESSORY_STATUS.NOT_APPLICABLE, formula: 'No mating-flange rule for this joint type.' };
+    if (jointTypeDefinition.calculationRules.matingFlanges === null) return { value: 0, status: ACCESSORY_STATUS.INPUT_REQUIRED, formula: 'Mating-flange rule is required for this joint type.' };
     return { value: perimeterM * count * 2, status: ACCESSORY_STATUS.CALCULATED, formula: `${perimeterM} × ${count} × 2` };
+  }
+
+  function accessoryLine({ net = 0, unit, status, formula, inputs, basis, reason, waste = 0 }) {
+    const procurement = net + waste;
+    return {
+      net, waste, procurement, unit, status, formula, inputs, basis,
+      reason: reason || basis, quantity: procurement
+    };
   }
 
   function calculateJointAccessories({ perimeterM, dimensions, settings, jointModel }) {
     const rules = jointModel.jointTypeDefinition.calculationRules;
-    const jointPerimeter = calculateJointPerimeter(perimeterM, jointModel.jointCount, jointModel.jointTypeDefinition);
-    const flange = jointPerimeter.value;
+    const jointCount = jointModel.jointCount;
+    const jointPerimeter = calculateJointPerimeter(perimeterM, jointCount, jointModel.jointTypeDefinition);
+    const connectionLengthM = jointPerimeter.value;
+    const connectionInputs = `Duct Type=${dimensions.type}; Joint Type=${jointModel.jointType}; Joint Basis=${jointModel.jointBasis}; Total Joints=${jointCount}; Pressure Class=${jointModel.pressureClass || 'NOT_DEFINED'}`;
+    const legacy = jointModel.jointCountMode === JOINT_MODES.LEGACY;
+    const flange = rules.matingFlanges === false
+      ? accessoryLine({ unit: 'm', status: ACCESSORY_STATUS.NOT_APPLICABLE, formula: 'No mating-flange rule for this Joint Type', inputs: connectionInputs, basis: 'Joint Type does not require mating flanges.' })
+      : rules.matingFlanges === null
+        ? accessoryLine({ unit: 'm', status: ACCESSORY_STATUS.INPUT_REQUIRED, formula: 'Mating-flange rule required', inputs: connectionInputs, basis: 'CUSTOM Joint Type has no configured flange rule.' })
+        : accessoryLine({ net: connectionLengthM, unit: 'm', status: legacy ? ACCESSORY_STATUS.LEGACY_ESTIMATE : ACCESSORY_STATUS.CALCULATED, formula: `${perimeterM} m × ${jointCount} joints × 2 mating flanges`, inputs: connectionInputs, basis: legacy ? 'Legacy stored estimate retained.' : 'Joint-Type mating-flange rule.' });
+    const flangeLengthM = flange.net;
     const cornerUnits = dimensions.type === 'rect' ? rules.cornerUnitsPerJoint : 0;
     const corners = dimensions.type !== 'rect'
-      ? { quantity: 0, status: ACCESSORY_STATUS.NOT_APPLICABLE, reason: 'Corners are not applicable to round duct.' }
+      ? accessoryLine({ unit: 'pcs', status: ACCESSORY_STATUS.NOT_APPLICABLE, formula: 'Round duct has no rectangular flange corners', inputs: connectionInputs, basis: 'Duct Type dependency.' })
       : cornerUnits === null
-        ? { quantity: 0, status: ACCESSORY_STATUS.INPUT_REQUIRED, reason: 'Corner rule is not defined for this joint type.' }
-        : { quantity: cornerUnits * jointModel.jointCount, status: jointModel.jointCountMode === JOINT_MODES.LEGACY ? ACCESSORY_STATUS.LEGACY_ESTIMATE : ACCESSORY_STATUS.ESTIMATED, reason: 'Joint-type rule; verify against project connection detail.' };
-    const cleats = flange > 0 && settings.cleatSpacing !== null
-      ? { quantity: Math.ceil(flange / (settings.cleatSpacing * UNIT_FACTORS.mmToM)), status: ACCESSORY_STATUS.ESTIMATED, reason: 'SPACING-BASED ESTIMATE' }
-      : { quantity: 0, status: flange === 0 ? ACCESSORY_STATUS.NOT_APPLICABLE : ACCESSORY_STATUS.INPUT_REQUIRED, reason: 'Cleat spacing is required to calculate cleat quantity.' };
+        ? accessoryLine({ unit: 'pcs', status: ACCESSORY_STATUS.INPUT_REQUIRED, formula: 'Corner rule required for this Joint Type', inputs: connectionInputs, basis: 'No verified corner rule configured.' })
+        : accessoryLine({ net: cornerUnits * jointCount, unit: 'pcs', status: legacy ? ACCESSORY_STATUS.LEGACY_ESTIMATE : ACCESSORY_STATUS.ESTIMATED, formula: `${cornerUnits} corner units/joint × ${jointCount} joints`, inputs: connectionInputs, basis: 'Joint-Type rule; verify against project connection detail.' });
+    const cleats = flangeLengthM === 0 && rules.matingFlanges === false
+      ? accessoryLine({ unit: 'pcs', status: ACCESSORY_STATUS.NOT_APPLICABLE, formula: 'No connection length for this Joint Type', inputs: connectionInputs, basis: 'Joint Type dependency.' })
+      : settings.cleatSpacing === null
+        ? accessoryLine({ unit: 'pcs', status: ACCESSORY_STATUS.INPUT_REQUIRED, formula: 'Cleat Spacing is required', inputs: connectionInputs, basis: 'Connection Length ÷ Cleat Spacing cannot be evaluated.' })
+        : accessoryLine({ net: Math.ceil(flangeLengthM / (settings.cleatSpacing * UNIT_FACTORS.mmToM)), unit: 'pcs', status: legacy ? ACCESSORY_STATUS.LEGACY_ESTIMATE : ACCESSORY_STATUS.ESTIMATED, formula: `ceil(${flangeLengthM} m ÷ ${settings.cleatSpacing} mm)`, inputs: `${connectionInputs}; Cleat Spacing=${settings.cleatSpacing} mm`, basis: 'Spacing-based estimate; no Pressure Class-specific rule is configured.' });
     const gasketRequired = rules.gasketRequired;
     const gasket = gasketRequired === false
-      ? { required: false, length: 0, waste: 0, procurement: 0, status: ACCESSORY_STATUS.NOT_APPLICABLE, reason: 'Joint type does not define a gasket requirement.' }
+      ? { required: false, ...accessoryLine({ unit: 'm', status: ACCESSORY_STATUS.NOT_APPLICABLE, formula: 'Gasket not required for this Joint Type', inputs: connectionInputs, basis: 'Joint-Type gasket rule.' }) }
       : gasketRequired === null
-        ? { required: null, length: 0, waste: 0, procurement: 0, status: ACCESSORY_STATUS.INPUT_REQUIRED, reason: 'Gasket rule is required for CUSTOM joint type.' }
-        : { required: true, length: flange, waste: 0, procurement: flange, status: ACCESSORY_STATUS.CALCULATED, reason: 'Joint-type gasket rule; no waste rate assumed.' };
-    const silicone = flange === 0
-      ? { quantity: 0, status: ACCESSORY_STATUS.NOT_APPLICABLE, reason: 'No flange length defined.' }
+        ? { required: null, ...accessoryLine({ unit: 'm', status: ACCESSORY_STATUS.INPUT_REQUIRED, formula: 'Gasket rule required', inputs: connectionInputs, basis: 'CUSTOM Joint Type has no verified gasket rule.' }) }
+        : { required: true, ...accessoryLine({ net: flangeLengthM, unit: 'm', status: legacy ? ACCESSORY_STATUS.LEGACY_ESTIMATE : ACCESSORY_STATUS.CALCULATED, formula: `${flangeLengthM} m connection length + 0 m accessory waste`, inputs: connectionInputs, basis: 'Joint-Type gasket rule; no accessory waste rate assumed.' }) };
+    const silicone = flangeLengthM === 0 && rules.matingFlanges === false
+      ? accessoryLine({ unit: 'tubes', status: ACCESSORY_STATUS.NOT_APPLICABLE, formula: 'No connection length for this Joint Type', inputs: connectionInputs, basis: 'Joint Type dependency.' })
       : settings.silCoverage === null
-        ? { quantity: 0, status: ACCESSORY_STATUS.INPUT_REQUIRED, reason: 'Silicone coverage is required to calculate sealant.' }
-        : { quantity: Math.ceil(flange / settings.silCoverage), status: ACCESSORY_STATUS.ESTIMATED, reason: 'USER / PROJECT RATE' };
-    const bolts = flange === 0 && rules.boltRule === 'NOT_APPLICABLE'
-      ? { quantity: 0, status: ACCESSORY_STATUS.NOT_APPLICABLE, reason: 'Joint type has no bolt rule.' }
-      : jointModel.boltSpacingMm !== null && flange > 0
-        ? { quantity: Math.ceil(flange / (jointModel.boltSpacingMm * UNIT_FACTORS.mmToM)), status: ACCESSORY_STATUS.ESTIMATED, reason: 'SPACING-BASED ESTIMATE; verify connection detail.' }
-        : { quantity: 0, status: jointModel.jointCountMode === JOINT_MODES.LEGACY ? ACCESSORY_STATUS.LEGACY_ESTIMATE : ACCESSORY_STATUS.INPUT_REQUIRED, reason: 'Bolt spacing is required to calculate bolt quantity.' };
-    const legacyBolts = jointModel.jointCountMode === JOINT_MODES.LEGACY
-      ? { quantity: cleats.quantity, status: ACCESSORY_STATUS.LEGACY_ESTIMATE, reason: 'Legacy compatibility only; Bolts = Cleats is not a universal engineering rule.' }
-      : bolts;
-    const nuts = legacyBolts.status === ACCESSORY_STATUS.LEGACY_ESTIMATE
-      ? { quantity: legacyBolts.quantity, status: ACCESSORY_STATUS.LEGACY_ESTIMATE, reason: 'Legacy compatibility only.' }
-      : legacyBolts.status === ACCESSORY_STATUS.NOT_APPLICABLE
-        ? { quantity: 0, status: ACCESSORY_STATUS.NOT_APPLICABLE, reason: 'No bolt connection defined.' }
-        : { quantity: 0, status: ACCESSORY_STATUS.INPUT_REQUIRED, reason: 'Nut connection rule is required.' };
-    const washers = legacyBolts.status === ACCESSORY_STATUS.LEGACY_ESTIMATE
-      ? { quantity: legacyBolts.quantity, status: ACCESSORY_STATUS.LEGACY_ESTIMATE, reason: 'Legacy compatibility only.' }
-      : legacyBolts.status === ACCESSORY_STATUS.NOT_APPLICABLE
-        ? { quantity: 0, status: ACCESSORY_STATUS.NOT_APPLICABLE, reason: 'No bolt connection defined.' }
-        : { quantity: 0, status: ACCESSORY_STATUS.INPUT_REQUIRED, reason: 'Washer connection rule is required.' };
+        ? accessoryLine({ unit: 'tubes', status: ACCESSORY_STATUS.INPUT_REQUIRED, formula: 'Silicone coverage rate is required', inputs: connectionInputs, basis: 'No global silicone rate is assumed.' })
+        : accessoryLine({ net: Math.ceil(flangeLengthM / settings.silCoverage), unit: 'tubes', status: legacy ? ACCESSORY_STATUS.LEGACY_ESTIMATE : ACCESSORY_STATUS.ESTIMATED, formula: `ceil(${flangeLengthM} m ÷ ${settings.silCoverage} m/tube) + 0 tubes accessory waste`, inputs: `${connectionInputs}; Silicone Coverage=${settings.silCoverage} m/tube`, basis: 'User/project allowance; verify technical data.' });
+    const bolts = legacy
+      ? accessoryLine({ net: cleats.net, unit: 'sets', status: ACCESSORY_STATUS.LEGACY_ESTIMATE, formula: 'Legacy stored value retained', inputs: connectionInputs, basis: 'Legacy compatibility only; Bolts = Cleats is not a universal engineering rule.' })
+      : flangeLengthM === 0 && rules.boltRule === 'NOT_APPLICABLE'
+        ? accessoryLine({ unit: 'sets', status: ACCESSORY_STATUS.NOT_APPLICABLE, formula: 'Bolts not applicable for this Joint Type', inputs: connectionInputs, basis: 'Joint-Type bolt rule.' })
+        : jointModel.boltSpacingMm === null
+          ? accessoryLine({ unit: 'sets', status: ACCESSORY_STATUS.INPUT_REQUIRED, formula: 'Bolt Spacing is required', inputs: connectionInputs, basis: 'No verified bolt rule without Bolt Spacing.' })
+          : accessoryLine({ net: Math.ceil(flangeLengthM / (jointModel.boltSpacingMm * UNIT_FACTORS.mmToM)), unit: 'sets', status: ACCESSORY_STATUS.ESTIMATED, formula: `ceil(${flangeLengthM} m ÷ ${jointModel.boltSpacingMm} mm) + 0 sets accessory waste`, inputs: `${connectionInputs}; Bolt Spacing=${jointModel.boltSpacingMm} mm`, basis: 'Spacing-based estimate; verify connection detail.' });
+    const nuts = legacy
+      ? accessoryLine({ net: bolts.net, unit: 'pcs', status: ACCESSORY_STATUS.LEGACY_ESTIMATE, formula: 'Legacy stored value retained', inputs: connectionInputs, basis: 'Legacy compatibility only.' })
+      : bolts.status === ACCESSORY_STATUS.NOT_APPLICABLE
+        ? accessoryLine({ unit: 'pcs', status: ACCESSORY_STATUS.NOT_APPLICABLE, formula: 'No bolt connection defined', inputs: connectionInputs, basis: 'Joint-Type dependency.' })
+        : accessoryLine({ unit: 'pcs', status: ACCESSORY_STATUS.INPUT_REQUIRED, formula: 'Nut connection rule required', inputs: connectionInputs, basis: 'No verified independent nut rule configured.' });
+    const washers = legacy
+      ? accessoryLine({ net: bolts.net, unit: 'pcs', status: ACCESSORY_STATUS.LEGACY_ESTIMATE, formula: 'Legacy stored value retained', inputs: connectionInputs, basis: 'Legacy compatibility only.' })
+      : bolts.status === ACCESSORY_STATUS.NOT_APPLICABLE
+        ? accessoryLine({ unit: 'pcs', status: ACCESSORY_STATUS.NOT_APPLICABLE, formula: 'No bolt connection defined', inputs: connectionInputs, basis: 'Joint-Type dependency.' })
+        : accessoryLine({ unit: 'pcs', status: ACCESSORY_STATUS.INPUT_REQUIRED, formula: 'Washer connection rule required', inputs: connectionInputs, basis: 'No verified independent washer rule configured.' });
     return {
-      jointPerimeterM: jointPerimeter.value,
+      jointPerimeterM: connectionLengthM,
       jointPerimeterStatus: jointPerimeter.status,
-      flange: { quantity: flange, status: flange > 0 ? ACCESSORY_STATUS.CALCULATED : ACCESSORY_STATUS.NOT_APPLICABLE, reason: rules.matingFlanges ? 'Joint-type mating-flange rule.' : 'No mating-flange rule.' },
-      corners,
-      cleats,
-      gasket,
-      silicone,
-      bolts: legacyBolts,
-      nuts,
-      washers
+      connectionLengthM,
+      flange, corners, cleats, gasket, silicone, bolts, nuts, washers
     };
   }
 
@@ -283,27 +296,30 @@
       netInsulationArea, insulationWasteArea, procurementInsulationArea, insulationVolume,
       jointPerimeterM: accessories.jointPerimeterM,
       joints: jointModel.jointCount,
-      flange: accessories.flange.quantity,
+      flange: accessories.flange.procurement,
       flangeStatus: accessories.flange.status,
-      corners: accessories.corners.quantity,
+      corners: accessories.corners.procurement,
       cornersStatus: accessories.corners.status,
-      cleats: accessories.cleats.quantity,
+      cleats: accessories.cleats.procurement,
       cleatsStatus: accessories.cleats.status,
       gasketRequired: accessories.gasket.required,
-      gasketLength: accessories.gasket.length,
-      gasket: accessories.gasket.length,
+      gasketLength: accessories.gasket.net,
+      gasket: accessories.gasket.procurement,
       gasketWaste: accessories.gasket.waste,
       gasketProcurement: accessories.gasket.procurement,
       gasketStatus: accessories.gasket.status,
-      silicone: accessories.silicone.quantity,
+      silicone: accessories.silicone.procurement,
       siliconeStatus: accessories.silicone.status,
       siliconeSource: accessories.silicone.reason,
-      bolts: accessories.bolts.quantity,
+      bolts: accessories.bolts.procurement,
       boltsStatus: accessories.bolts.status,
-      nuts: accessories.nuts.quantity,
+      nuts: accessories.nuts.procurement,
       nutsStatus: accessories.nuts.status,
-      washers: accessories.washers.quantity,
+      washers: accessories.washers.procurement,
       washersStatus: accessories.washers.status,
+      accessoryNet: Object.fromEntries(Object.entries(accessories).filter(([key]) => ['flange', 'corners', 'cleats', 'gasket', 'silicone', 'bolts', 'nuts', 'washers'].includes(key)).map(([key, line]) => [key, line.net])),
+      accessoryWaste: Object.fromEntries(Object.entries(accessories).filter(([key]) => ['flange', 'corners', 'cleats', 'gasket', 'silicone', 'bolts', 'nuts', 'washers'].includes(key)).map(([key, line]) => [key, line.waste])),
+      accessoryProcurement: Object.fromEntries(Object.entries(accessories).filter(([key]) => ['flange', 'corners', 'cleats', 'gasket', 'silicone', 'bolts', 'nuts', 'washers'].includes(key)).map(([key, line]) => [key, line.procurement])),
       accessoryDetails: accessories,
       netWeight, wasteWeight, procurementWeight, weight: procurementWeight,
       adhesive, tape,

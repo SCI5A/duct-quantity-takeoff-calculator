@@ -295,6 +295,37 @@
     wrapper.append(title, expression, output); return wrapper;
   }
 
+  function accessoryFormulaRows(item) {
+    const details = item.accessoryDetails || {};
+    const labels = { flange: 'G-Flange', corners: 'Flange Corners', cleats: 'Cleats / Clamps', gasket: 'Gasket', silicone: 'Silicone', bolts: 'Bolts', nuts: 'Nuts', washers: 'Washers' };
+    return Object.entries(labels).flatMap(([key, label]) => {
+      const line = details[key];
+      if (!line) return [];
+      return [
+        formulaRow(`${label} — Net`, line.formula, `${format(line.net, line.unit === 'pcs' || line.unit === 'sets')} ${line.unit}`, line.status),
+        formulaRow(`${label} — Waste`, 'Accessory-specific waste allowance', `${format(line.waste, line.unit === 'pcs' || line.unit === 'sets')} ${line.unit}`, line.status),
+        formulaRow(`${label} — Procurement`, 'Net + Accessory Waste', `${format(line.procurement, line.unit === 'pcs' || line.unit === 'sets')} ${line.unit}`, line.status),
+        formulaRow(`${label} — Inputs / Basis`, line.inputs || '—', line.basis || line.reason || '—', line.status)
+      ];
+    });
+  }
+
+  function renderAccessoryDetails() {
+    const rows = $('accessoryRows');
+    if (!rows) return;
+    rows.replaceChildren();
+    const labels = { flange: 'G-Flange', corners: 'Flange Corners', cleats: 'Cleats / Clamps', gasket: 'Gasket', silicone: 'Silicone', bolts: 'Bolts', nuts: 'Nuts', washers: 'Washers' };
+    items.forEach((item, index) => {
+      Object.entries(labels).forEach(([key, label]) => {
+        const line = item.accessoryDetails && item.accessoryDetails[key];
+        if (!line) return;
+        const row = document.createElement('tr');
+        [index + 1, label, format(line.net, line.unit === 'pcs' || line.unit === 'sets'), format(line.waste, line.unit === 'pcs' || line.unit === 'sets'), format(line.procurement, line.unit === 'pcs' || line.unit === 'sets'), line.unit, line.status].forEach(value => appendCell(row, value));
+        rows.appendChild(row);
+      });
+    });
+  }
+
   function showCalculation(index) {
     const item = items[index]; if (!item) return;
     const viewer = $('formulaViewer');
@@ -331,14 +362,8 @@
       formulaRow('هالك الدكت', `صافي الدكت × ${item.wasteRate}%`, `${format(item.ductWasteArea)} m²`, 'ESTIMATING ALLOWANCE'),
       formulaRow('توريد الدكت', 'صافي الدكت + هالك الدكت', `${format(item.procurementDuctArea)} m²`, 'PROCUREMENT'),
       formulaRow('Joint Type', item.jointType, `${item.jointClassification}`, item.jointClassification),
-      formulaRow('Pressure Class', 'Pressure-dependent rule input', display(item.pressureClass, 'Not defined'), item.pressureClass ? 'INPUT PROVIDED' : 'PRESSURE-DEPENDENT RULE NOT APPLIED'),
-      formulaRow('G-Flange', `Joint Perimeter × mating-flange rule`, `${format(item.flange)} m`, item.flangeStatus),
-      formulaRow('Corners', `${item.jointType} corner rule`, `${format(item.corners, true)} pcs`, item.cornersStatus),
-      formulaRow('Cleats', `ceil(Flange Length ÷ ${display(item.cleatSpacing)} mm)`, `${format(item.cleats, true)} pcs`, item.cleatsStatus),
-      formulaRow('Gasket', `${item.jointType} gasket rule; no accessory waste assumed`, `${format(item.gasket)} m`, item.gasketStatus),
-      formulaRow('Sealant / Silicone', item.silCoverage === null ? 'Coverage Rate required' : `ceil(Flange Length ÷ ${item.silCoverage} m/Tube)`, `${format(item.silicone, true)} tubes`, `${item.siliconeStatus} — ${item.siliconeSource}`),
-      formulaRow('Bolts', item.boltSpacingMm ? `ceil(Flange Length ÷ ${item.boltSpacingMm} mm)` : 'Bolt spacing required', `${format(item.bolts, true)} sets`, item.boltsStatus),
-      formulaRow('Nuts / Washers', 'Connection rule', `${format(item.nuts, true)} / ${format(item.washers, true)}`, `${item.nutsStatus} / ${item.washersStatus}`),
+      formulaRow('Pressure Class', 'Pressure-dependent rule input', display(item.pressureClass, 'Not defined'), item.pressureClass ? 'INPUT_PROVIDED' : 'INPUT_REQUIRED'),
+      ...accessoryFormulaRows(item),
       formulaRow('حجم العزل', `توريد العزل × ${item.insulationThicknessMm} ÷ 1000`, `${format(item.insulationVolume)} m³`, 'PROCUREMENT'),
       formulaRow('وزن صافي الصاج', `صافي الدكت × ${item.sheetThicknessMm} ÷ 1000 × ${item.sheetDensity}`, `${format(item.netWeight)} kg`, 'CALCULATED'),
       formulaRow('وزن توريد الصاج', `توريد الدكت × ${item.sheetThicknessMm} ÷ 1000 × ${item.sheetDensity}`, `${format(item.procurementWeight)} kg`, 'PROCUREMENT')
@@ -368,7 +393,7 @@
     showStatus('تم إنشاء CSV مع نموذج الوصلات وحالات الملحقات.', 'success');
   }
 
-  function render() { renderRows(); renderSummary(); }
+  function render() { renderRows(); renderSummary(); renderAccessoryDetails(); }
 
   $('addButton').addEventListener('click', addItem);
   $('clearButton').addEventListener('click', clearForm);
