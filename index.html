@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Duct Quantity & Accessories Calculator</title><link rel="stylesheet" href="assets/css/style.css">
+</head><body>
+<header><h1>حاسبة كميات الدكت وملحقاته</h1><p>Duct Quantity & Accessories Calculator</p></header>
+<main>
+<section class="card"><h2>إعدادات الاستهلاك</h2><div class="grid">
+<div><label>هالك الدكت %</label><input id="waste" type="number" value="10" min="0" step=".1"></div>
+<div><label>غراء العزل kg/m²</label><input id="adhRate" type="number" value=".25" min="0" step=".01"></div>
+<div><label>شريط العزل m/m²</label><input id="tapeRate" type="number" value=".08" min="0" step=".01"></div>
+<div><label>تباعد Cleats mm</label><input id="cleatSpacing" type="number" value="300" min="1"></div>
+<div><label>تغطية السيليكون m/Tube</label><input id="silCoverage" type="number" value="10" min=".1" step=".1"></div>
+<div><label>هالك العزل %</label><input id="insWaste" type="number" value="10" min="0" step=".1"></div>
+</div><p class="note">عدّل معدلات الغراء والشريط والسيليكون حسب Technical Data Sheet للمادة.</p></section>
+
+<section class="card"><h2>إضافة دكت</h2><div class="grid">
+<div><label>نوع الدكت</label><select id="type"><option value="rect">مستطيل</option><option value="round">دائري</option></select></div>
+<div><label>العرض W mm</label><input id="w" type="number"></div>
+<div><label>الارتفاع H mm</label><input id="h" type="number"></div>
+<div><label>القطر D mm</label><input id="d" type="number"></div>
+<div><label>الطول L m</label><input id="l" type="number" step=".01"></div>
+<div><label>العدد</label><input id="qty" type="number" min="1" value="1"></div>
+<div><label>سماكة الصاج mm</label><input id="th" type="number" value=".8" step=".1"></div>
+<div><label>سماكة العزل mm</label><input id="insTh" type="number" value="25"></div>
+<div><label>عدد الوصلات</label><input id="joints" type="number" min="0" value="0"></div>
+</div><div class="actions">
+<button class="primary" onclick="addItem()">إضافة</button><button class="secondary" onclick="clearForm()">مسح</button><button class="danger" onclick="clearAll()">حذف الكل</button>
+</div><p class="note">إذا كان عدد الوصلات صفرًا، يُقدّر تلقائيًا = العدد - 1.</p></section>
+
+<section class="card"><h2>الإجماليات</h2><div class="summary" id="summary"></div>
+<div class="actions"><button class="secondary" onclick="exportCSV()">تصدير CSV</button><button class="secondary" onclick="window.print()">طباعة / PDF</button></div></section>
+
+<section class="card"><h2>BOQ — جدول الكميات</h2><div class="tableWrap"><table><thead><tr>
+<th>#</th><th>النوع</th><th>المقاس</th><th>الطول</th><th>العدد</th><th>الدكت m²</th><th>العزل m²</th><th>غراء kg</th><th>G-Flange m</th><th>Corners</th><th>Cleats</th><th>Gasket m</th><th>Silicone</th><th>Bolts</th><th>الوزن kg</th><th>إجراء</th>
+</tr></thead><tbody id="rows"></tbody></table></div></section>
+</main><footer>Duct Quantity & Accessories Calculator — GitHub Pages</footer>
+<script src="assets/js/app.js"></script></body></html>
