@@ -13,6 +13,10 @@
     return (integer ? integerFormat : numberFormat).format(Number(value) || 0);
   }
 
+  function display(value, fallback = '—') {
+    return value === null || value === undefined || value === '' ? fallback : String(value);
+  }
+
   function showStatus(message, kind = 'success') {
     const status = $('status');
     status.hidden = !message;
@@ -28,15 +32,23 @@
     return value;
   }
 
+  function optionalValue(id, label) {
+    const element = $(id);
+    if (!element || element.value.trim() === '') return null;
+    const value = Number(element.value);
+    if (!Number.isFinite(value)) throw new Error(`${label} يجب أن يكون رقمًا صالحًا.`);
+    return value;
+  }
+
   function settingsFromForm() {
     return math.normalizeSettings({
       waste: readValue('waste', 'هالك الدكت'),
       adhRate: readValue('adhRate', 'معدل غراء العزل'),
       tapeRate: readValue('tapeRate', 'معدل شريط العزل'),
-      cleatSpacing: readValue('cleatSpacing', 'تباعد Cleats'),
-      silCoverage: readValue('silCoverage', 'تغطية السيليكون'),
+      cleatSpacing: optionalValue('cleatSpacing', 'تباعد Cleats'),
+      silCoverage: optionalValue('silCoverage', 'تغطية السيليكون'),
       insWaste: readValue('insWaste', 'هالك العزل')
-    });
+    }, { optionalJointInputs: true });
   }
 
   function formInput() {
@@ -44,6 +56,7 @@
     const material = math.SHEET_MATERIALS[materialKey];
     if (!material) throw new Error('اختر مادة صاج صحيحة.');
     const type = $('type').value;
+    const jointCountMode = $('jointCountMode').value;
     return {
       type,
       w: type === 'rect' ? readValue('w', 'العرض') : 0,
@@ -53,7 +66,13 @@
       qty: readValue('qty', 'العدد'),
       th: readValue('th', 'سماكة الصاج'),
       insTh: readValue('insTh', 'سماكة العزل'),
-      joints: readValue('joints', 'عدد الوصلات'),
+      jointCountMode,
+      jointType: $('jointType').value,
+      fabricationLengthM: jointCountMode === 'AUTO' ? readValue('fabricationLength', 'طول التصنيع') : optionalValue('fabricationLength', 'طول التصنيع'),
+      manualJointCount: jointCountMode === 'MANUAL' ? readValue('manualJointCount', 'عدد الوصلات اليدوي') : optionalValue('manualJointCount', 'عدد الوصلات اليدوي'),
+      boltSpacing: optionalValue('boltSpacing', 'تباعد البراغي'),
+      pressureClass: $('pressureClass').value || null,
+      joints: 0,
       sheetMaterial: materialKey,
       sheetDensity: material.density
     };
@@ -87,6 +106,14 @@
         th: item.th ?? item.sheetThicknessMm,
         insTh: item.insTh ?? item.insulationThicknessMm ?? 25,
         joints: item.joints ?? 0,
+        jointCountMode: item.jointCountMode,
+        jointType: item.jointType,
+        fabricationLengthM: item.fabricationLengthM ?? item.fabricationLength,
+        manualJointCount: item.manualJointCount,
+        boltSpacing: item.boltSpacingMm ?? item.boltSpacing,
+        boltSize: item.boltSize,
+        boltLength: item.boltLengthMm ?? item.boltLength,
+        pressureClass: item.pressureClass,
         sheetMaterial: item.sheetMaterial ?? 'galvanized',
         sheetDensity: item.sheetDensity ?? 7850
       }, settingsFromLegacy(item));
@@ -126,14 +153,12 @@
         if (migratedItem) migrated.push(migratedItem);
         else invalidCount += 1;
       });
-      if (invalidCount > 0) {
-        showStatus(`تم تجاهل ${invalidCount} بند تالف من البيانات المحفوظة.`, 'error');
-      }
+      if (invalidCount > 0) showStatus(`تم تجاهل ${invalidCount} بند تالف من البيانات المحفوظة.`, 'error');
       if (sourceKey !== STORAGE_KEY) {
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated)); } catch { /* Migration remains in memory. */ }
       }
       return migrated;
-    } catch (error) {
+    } catch {
       storageRemove(STORAGE_KEY);
       if (sourceKey === LEGACY_STORAGE_KEY) storageRemove(LEGACY_STORAGE_KEY);
       showStatus('تم تجاهل بيانات الحفظ التالفة. يمكنك إدخال البنود من جديد.', 'error');
@@ -152,9 +177,12 @@
   }
 
   function clearForm() {
-    ['w', 'h', 'd', 'l'].forEach(id => { $(id).value = ''; });
+    ['w', 'h', 'd', 'l', 'fabricationLength', 'manualJointCount', 'boltSpacing'].forEach(id => { $(id).value = ''; });
     $('qty').value = '1';
-    $('joints').value = '0';
+    $('jointCountMode').value = 'AUTO';
+    $('jointType').value = '';
+    $('pressureClass').value = '';
+    updateJointFields();
   }
 
   function updateTypeFields() {
@@ -164,18 +192,23 @@
     $('d').disabled = !isRound;
   }
 
+  function updateJointFields() {
+    const manual = $('jointCountMode').value === 'MANUAL';
+    $('manualJointCountField').hidden = !manual;
+    $('fabricationLengthField').hidden = manual;
+    $('fabricationLength').required = !manual;
+    $('manualJointCount').required = manual;
+  }
+
   function addItem() {
     try {
       const item = math.calculateItem(formInput(), settingsFromForm());
       const previous = items;
       items = [...items, item];
-      if (!save()) {
-        items = previous;
-        return;
-      }
+      if (!save()) { items = previous; return; }
       render();
       clearForm();
-      showStatus('تمت إضافة البند وحساب صافي الكمية والهالك وكمية التوريد.', 'success');
+      showStatus(`تمت إضافة البند. Joint Count: ${item.joints} (${item.jointCountSource}).`, 'success');
     } catch (error) {
       showStatus(error.message, 'error');
     }
@@ -185,10 +218,7 @@
     if (!Number.isInteger(index) || index < 0 || index >= items.length) return;
     const previous = items;
     items = items.filter((_, itemIndex) => itemIndex !== index);
-    if (!save()) {
-      items = previous;
-      return;
-    }
+    if (!save()) { items = previous; return; }
     render();
     showStatus('تم حذف البند.', 'success');
   }
@@ -198,10 +228,7 @@
     if (window.confirm('حذف جميع البنود؟')) {
       const previous = items;
       items = [];
-      if (!save()) {
-        items = previous;
-        return;
-      }
+      if (!save()) { items = previous; return; }
       render();
       showStatus('تم حذف جميع البنود.', 'success');
     }
@@ -222,140 +249,104 @@
       const size = item.type === 'rect' ? `${item.widthMm} × ${item.heightMm} mm` : `Ø ${item.diameterMm} mm`;
       [
         index + 1, item.type === 'rect' ? 'مستطيل' : 'دائري', size, format(item.lengthM), item.quantity,
+        display(item.sectionCount), item.joints, item.jointCountSource, item.jointType,
         format(item.netArea), format(item.ductWasteArea), format(item.procurementDuctArea),
         format(item.netInsulationArea), format(item.insulationWasteArea), format(item.procurementInsulationArea),
-        format(item.adhesive), format(item.tape), format(item.flange), format(item.corners, true), format(item.cleats, true),
-        format(item.gasket), format(item.silicone, true), format(item.bolts, true), format(item.netWeight), format(item.procurementWeight)
+        format(item.adhesive), format(item.tape), `${format(item.flange)} (${item.flangeStatus})`, `${format(item.corners, true)} (${item.cornersStatus})`, `${format(item.cleats, true)} (${item.cleatsStatus})`, `${format(item.gasket)} (${item.gasketStatus})`, `${format(item.silicone, true)} (${item.siliconeStatus})`, `${format(item.bolts, true)} (${item.boltsStatus})`, `${format(item.nuts, true)} (${item.nutsStatus})`, `${format(item.washers, true)} (${item.washersStatus})`,
+        format(item.netWeight), format(item.procurementWeight)
       ].forEach(value => appendCell(row, value));
-
       const actionCell = document.createElement('td');
       const formulaButton = document.createElement('button');
-      formulaButton.type = 'button';
-      formulaButton.className = 'secondary compact-button';
-      formulaButton.textContent = 'المعادلات';
-      formulaButton.setAttribute('aria-label', `عرض معادلات البند ${index + 1}`);
-      formulaButton.addEventListener('click', () => showCalculation(index));
+      formulaButton.type = 'button'; formulaButton.className = 'secondary compact-button'; formulaButton.textContent = 'المعادلات';
+      formulaButton.setAttribute('aria-label', `عرض معادلات البند ${index + 1}`); formulaButton.addEventListener('click', () => showCalculation(index));
       const deleteButton = document.createElement('button');
-      deleteButton.type = 'button';
-      deleteButton.className = 'danger compact-button';
-      deleteButton.textContent = 'حذف';
-      deleteButton.setAttribute('aria-label', `حذف البند ${index + 1}`);
-      deleteButton.addEventListener('click', () => removeItem(index));
-      actionCell.append(formulaButton, deleteButton);
-      row.appendChild(actionCell);
-      rows.appendChild(row);
+      deleteButton.type = 'button'; deleteButton.className = 'danger compact-button'; deleteButton.textContent = 'حذف';
+      deleteButton.setAttribute('aria-label', `حذف البند ${index + 1}`); deleteButton.addEventListener('click', () => removeItem(index));
+      actionCell.append(formulaButton, deleteButton); row.appendChild(actionCell); rows.appendChild(row);
     });
   }
 
   function renderSummary() {
     const sum = key => items.reduce((total, item) => total + (Number(item[key]) || 0), 0);
     const values = [
-      ['البنود', items.length, ''],
-      ['طول الدكت', items.reduce((total, item) => total + item.lengthM * item.quantity, 0), 'm'],
-      ['صافي الدكت', sum('netArea'), 'm²'],
-      ['هالك الدكت', sum('ductWasteArea'), 'm²'],
-      ['توريد الدكت', sum('procurementDuctArea'), 'm²'],
-      ['صافي العزل', sum('netInsulationArea'), 'm²'],
-      ['هالك العزل', sum('insulationWasteArea'), 'm²'],
-      ['توريد العزل', sum('procurementInsulationArea'), 'm²'],
-      ['حجم العزل', sum('insulationVolume'), 'm³'],
-      ['غراء العزل', sum('adhesive'), 'kg'],
-      ['شريط العزل', sum('tape'), 'm'],
-      ['G-Flange', sum('flange'), 'm'],
-      ['Corners', sum('corners'), 'pcs'],
-      ['Cleats', sum('cleats'), 'pcs'],
-      ['Gasket', sum('gasket'), 'm'],
-      ['Silicone', sum('silicone'), 'tubes'],
-      ['Bolts/Nuts', sum('bolts'), 'sets'],
-      ['وزن صافي الصاج', sum('netWeight'), 'kg'],
-      ['وزن توريد الصاج', sum('procurementWeight'), 'kg']
+      ['البنود', items.length, ''], ['طول الدكت', items.reduce((total, item) => total + item.lengthM * item.quantity, 0), 'm'],
+      ['الأقسام', sum('sectionCount'), 'pcs'], ['الوصلات', sum('joints'), 'pcs'],
+      ['صافي الدكت', sum('netArea'), 'm²'], ['هالك الدكت', sum('ductWasteArea'), 'm²'], ['توريد الدكت', sum('procurementDuctArea'), 'm²'],
+      ['صافي العزل', sum('netInsulationArea'), 'm²'], ['هالك العزل', sum('insulationWasteArea'), 'm²'], ['توريد العزل', sum('procurementInsulationArea'), 'm²'],
+      ['حجم العزل', sum('insulationVolume'), 'm³'], ['غراء العزل', sum('adhesive'), 'kg'], ['شريط العزل', sum('tape'), 'm'],
+      ['G-Flange', sum('flange'), 'm'], ['Corners', sum('corners'), 'pcs'], ['Cleats', sum('cleats'), 'pcs'], ['Gasket', sum('gasket'), 'm'],
+      ['Silicone', sum('silicone'), 'tubes'], ['Bolts', sum('bolts'), 'sets'], ['Nuts', sum('nuts'), 'pcs'], ['Washers', sum('washers'), 'pcs'],
+      ['وزن صافي الصاج', sum('netWeight'), 'kg'], ['وزن توريد الصاج', sum('procurementWeight'), 'kg']
     ];
-    const summary = $('summary');
-    summary.replaceChildren();
+    const summary = $('summary'); summary.replaceChildren();
     values.forEach(([label, value, unit]) => {
-      const metric = document.createElement('div');
-      metric.className = 'metric';
-      const small = document.createElement('small');
-      small.textContent = label;
-      const strong = document.createElement('strong');
-      strong.textContent = `${label === 'البنود' ? format(value, true) : format(value)} ${unit}`.trim();
-      metric.append(small, strong);
-      summary.appendChild(metric);
+      const metric = document.createElement('div'); metric.className = 'metric';
+      const small = document.createElement('small'); small.textContent = label;
+      const strong = document.createElement('strong'); strong.textContent = `${label === 'البنود' ? format(value, true) : format(value)} ${unit}`.trim();
+      metric.append(small, strong); summary.appendChild(metric);
     });
   }
 
-  function formulaRow(label, formula, result) {
-    const wrapper = document.createElement('div');
-    wrapper.className = 'formula-item';
-    const title = document.createElement('strong');
-    title.textContent = label;
-    const expression = document.createElement('code');
-    expression.textContent = formula;
-    const output = document.createElement('span');
-    output.textContent = result;
-    wrapper.append(title, expression, output);
-    return wrapper;
+  function formulaRow(label, formula, result, status = '') {
+    const wrapper = document.createElement('div'); wrapper.className = 'formula-item';
+    const title = document.createElement('strong'); title.textContent = label;
+    const expression = document.createElement('code'); expression.textContent = formula;
+    const output = document.createElement('span'); output.textContent = `${result}${status ? ` — ${status}` : ''}`;
+    wrapper.append(title, expression, output); return wrapper;
   }
 
   function showCalculation(index) {
-    const item = items[index];
-    if (!item) return;
+    const item = items[index]; if (!item) return;
     const viewer = $('formulaViewer');
-    $('formulaSubtitle').textContent = `البند ${index + 1}: ${item.type === 'rect' ? `${item.widthMm} × ${item.heightMm} mm` : `Ø ${item.diameterMm} mm`} — المادة: ${math.SHEET_MATERIALS[item.sheetMaterial]?.label || 'Sheet steel'}`;
-    const content = $('formulaContent');
-    content.replaceChildren();
-    const perimeterFormula = item.type === 'rect'
-      ? `2 × (${item.widthMm} + ${item.heightMm}) ÷ 1000`
-      : `π × ${item.diameterMm} ÷ 1000`;
+    $('formulaSubtitle').textContent = `البند ${index + 1}: ${item.type === 'rect' ? `${item.widthMm} × ${item.heightMm} mm` : `Ø ${item.diameterMm} mm`} — ${item.jointType} — ${item.jointCountSource}`;
+    const content = $('formulaContent'); content.replaceChildren();
+    const perimeterFormula = item.type === 'rect' ? `2 × (${item.widthMm} + ${item.heightMm}) ÷ 1000` : `π × ${item.diameterMm} ÷ 1000`;
     content.append(
-      formulaRow('المحيط', perimeterFormula, `${format(item.perimeterM)} m`),
-      formulaRow('صافي مساحة الدكت', `المحيط × ${item.lengthM} × ${item.quantity}`, `${format(item.netArea)} m²`),
-      formulaRow('هالك الدكت', `صافي الدكت × ${item.wasteRate}%`, `${format(item.ductWasteArea)} m²`),
-      formulaRow('كمية توريد الدكت', `صافي الدكت + هالك الدكت`, `${format(item.procurementDuctArea)} m²`),
-      formulaRow('هالك العزل', `صافي العزل × ${item.insulationWasteRate}%`, `${format(item.insulationWasteArea)} m²`),
-      formulaRow('حجم العزل', `توريد العزل × ${item.insulationThicknessMm} ÷ 1000`, `${format(item.insulationVolume)} m³`),
-      formulaRow('وزن صافي الصاج', `صافي الدكت × ${item.sheetThicknessMm} ÷ 1000 × ${item.sheetDensity}`, `${format(item.netWeight)} kg`),
-      formulaRow('وزن توريد الصاج', `توريد الدكت × ${item.sheetThicknessMm} ÷ 1000 × ${item.sheetDensity}`, `${format(item.procurementWeight)} kg`),
-      formulaRow('الملحقات', `الوصلات = ${item.joints} · تباعد Cleats = ${item.cleatSpacing} mm`, `Flange ${format(item.flange)} m · Cleats ${format(item.cleats, true)} · Bolts ${format(item.bolts, true)}`)
+      formulaRow('المحيط', perimeterFormula, `${format(item.perimeterM)} m`, 'CALCULATED'),
+      formulaRow('الأقسام', `ceil(${format(item.lengthM * item.quantity)} ÷ ${display(item.fabricationLengthM)})`, `${display(item.sectionCount)} sections`, item.sectionCount ? 'FABRICATION-SECTION DERIVED' : 'LEGACY ESTIMATE'),
+      formulaRow('عدد الوصلات', item.jointCountMode === 'MANUAL' ? 'Manual Joint Count' : `${display(item.sectionCount)} − 1`, `${item.joints} joints`, item.jointCountSource),
+      formulaRow('صافي مساحة الدكت', `المحيط × ${item.lengthM} × ${item.quantity}`, `${format(item.netArea)} m²`, 'CALCULATED'),
+      formulaRow('هالك الدكت', `صافي الدكت × ${item.wasteRate}%`, `${format(item.ductWasteArea)} m²`, 'ESTIMATING ALLOWANCE'),
+      formulaRow('توريد الدكت', 'صافي الدكت + هالك الدكت', `${format(item.procurementDuctArea)} m²`, 'PROCUREMENT'),
+      formulaRow('Joint Type', item.jointType, `${item.jointClassification}`, item.jointClassification),
+      formulaRow('Pressure Class', 'Pressure-dependent rule input', display(item.pressureClass, 'Not defined'), item.pressureClass ? 'INPUT PROVIDED' : 'PRESSURE-DEPENDENT RULE NOT APPLIED'),
+      formulaRow('G-Flange', `Joint Perimeter × mating-flange rule`, `${format(item.flange)} m`, item.flangeStatus),
+      formulaRow('Corners', `${item.jointType} corner rule`, `${format(item.corners, true)} pcs`, item.cornersStatus),
+      formulaRow('Cleats', `ceil(Flange Length ÷ ${display(item.cleatSpacing)} mm)`, `${format(item.cleats, true)} pcs`, item.cleatsStatus),
+      formulaRow('Gasket', `${item.jointType} gasket rule; no accessory waste assumed`, `${format(item.gasket)} m`, item.gasketStatus),
+      formulaRow('Sealant / Silicone', item.silCoverage === null ? 'Coverage Rate required' : `ceil(Flange Length ÷ ${item.silCoverage} m/Tube)`, `${format(item.silicone, true)} tubes`, `${item.siliconeStatus} — ${item.siliconeSource}`),
+      formulaRow('Bolts', item.boltSpacingMm ? `ceil(Flange Length ÷ ${item.boltSpacingMm} mm)` : 'Bolt spacing required', `${format(item.bolts, true)} sets`, item.boltsStatus),
+      formulaRow('Nuts / Washers', 'Connection rule', `${format(item.nuts, true)} / ${format(item.washers, true)}`, `${item.nutsStatus} / ${item.washersStatus}`),
+      formulaRow('حجم العزل', `توريد العزل × ${item.insulationThicknessMm} ÷ 1000`, `${format(item.insulationVolume)} m³`, 'PROCUREMENT'),
+      formulaRow('وزن صافي الصاج', `صافي الدكت × ${item.sheetThicknessMm} ÷ 1000 × ${item.sheetDensity}`, `${format(item.netWeight)} kg`, 'CALCULATED'),
+      formulaRow('وزن توريد الصاج', `توريد الدكت × ${item.sheetThicknessMm} ÷ 1000 × ${item.sheetDensity}`, `${format(item.procurementWeight)} kg`, 'PROCUREMENT')
     );
-    viewer.hidden = false;
-    viewer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    viewer.hidden = false; viewer.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function exportCSV() {
-    if (!items.length) {
-      showStatus('أضف بندًا واحدًا على الأقل قبل تصدير CSV.', 'error');
-      return;
-    }
+    if (!items.length) { showStatus('أضف بندًا واحدًا على الأقل قبل تصدير CSV.', 'error'); return; }
     const lines = [[
-      '#', 'Type', 'Size', 'Length m', 'Qty', 'Net Duct m2', 'Duct Waste m2', 'Procurement Duct m2',
-      'Net Insulation m2', 'Insulation Waste m2', 'Procurement Insulation m2', 'Insulation Volume m3',
-      'Adhesive kg', 'Tape m', 'G-Flange m', 'Corners', 'Cleats', 'Gasket m', 'Silicone tubes', 'Bolts',
-      'Net Weight kg', 'Procurement Weight kg', 'Sheet Material', 'Sheet Density kg/m3'
+      '#', 'Type', 'Size', 'Length m', 'Qty', 'Fabrication Length m', 'Sections', 'Joints', 'Joint Source', 'Joint Type',
+      'Net Duct m2', 'Duct Waste m2', 'Procurement Duct m2', 'Net Insulation m2', 'Insulation Waste m2', 'Procurement Insulation m2',
+      'Flange m', 'Flange Status', 'Corners', 'Corners Status', 'Cleats', 'Cleats Status', 'Gasket m', 'Gasket Status', 'Silicone tubes', 'Silicone Status', 'Bolts', 'Bolts Status', 'Nuts', 'Nuts Status', 'Washers', 'Washers Status', 'Net Weight kg', 'Procurement Weight kg', 'Sheet Material', 'Sheet Density kg/m3'
     ]];
     items.forEach((item, index) => lines.push([
-      index + 1,
-      item.type === 'rect' ? 'Rectangular' : 'Round',
-      item.type === 'rect' ? `${item.widthMm}x${item.heightMm} mm` : `Ø${item.diameterMm} mm`,
-      item.lengthM, item.quantity, item.netArea, item.ductWasteArea, item.procurementDuctArea,
-      item.netInsulationArea, item.insulationWasteArea, item.procurementInsulationArea, item.insulationVolume,
-      item.adhesive, item.tape, item.flange, item.corners, item.cleats, item.gasket, item.silicone, item.bolts,
+      index + 1, item.type === 'rect' ? 'Rectangular' : 'Round', item.type === 'rect' ? `${item.widthMm}x${item.heightMm} mm` : `Ø${item.diameterMm} mm`,
+      item.lengthM, item.quantity, item.fabricationLengthM, item.sectionCount, item.joints, item.jointCountSource, item.jointType,
+      item.netArea, item.ductWasteArea, item.procurementDuctArea, item.netInsulationArea, item.insulationWasteArea, item.procurementInsulationArea,
+      item.flange, item.flangeStatus, item.corners, item.cornersStatus, item.cleats, item.cleatsStatus, item.gasket, item.gasketStatus,
+      item.silicone, item.siliconeStatus, item.bolts, item.boltsStatus, item.nuts, item.nutsStatus, item.washers, item.washersStatus,
       item.netWeight, item.procurementWeight, item.sheetMaterial, item.sheetDensity
     ]));
-    const csv = '\ufeff' + lines.map(row => row.map(value => `"${String(value).replaceAll('"', '""')}"`).join(',')).join('\n');
+    const csv = '\ufeff' + lines.map(row => row.map(value => `"${String(value ?? '').replaceAll('"', '""')}"`).join(',')).join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'duct-quantity-BOQ.csv';
-    link.click();
+    const link = document.createElement('a'); link.href = url; link.download = 'duct-quantity-BOQ.csv'; link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
-    showStatus('تم إنشاء ملف CSV مفصل يفصل الصافي والهالك وكميات التوريد.', 'success');
+    showStatus('تم إنشاء CSV مع نموذج الوصلات وحالات الملحقات.', 'success');
   }
 
-  function render() {
-    renderRows();
-    renderSummary();
-  }
+  function render() { renderRows(); renderSummary(); }
 
   $('addButton').addEventListener('click', addItem);
   $('clearButton').addEventListener('click', clearForm);
@@ -363,11 +354,13 @@
   $('csvButton').addEventListener('click', exportCSV);
   $('printButton').addEventListener('click', () => window.print());
   $('type').addEventListener('change', updateTypeFields);
+  $('jointCountMode').addEventListener('change', updateJointFields);
   $('closeFormulaButton').addEventListener('click', () => { $('formulaViewer').hidden = true; });
   $('sheetMaterial').addEventListener('change', () => showStatus('تم تحديث كثافة المادة المستخدمة في حساب الوزن.', 'success'));
 
   items = loadItems();
   updateTypeFields();
+  updateJointFields();
   render();
 
   window.DuctApp = Object.freeze({ addItem, clearForm, clearAll, exportCSV, render, showCalculation, getItems: () => items.map(item => ({ ...item })) });

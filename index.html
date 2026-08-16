@@ -28,7 +28,7 @@
       <div><label for="adhRate">غراء العزل kg/m²</label><input id="adhRate" type="number" value=".25" min="0" step=".01" inputmode="decimal"></div>
       <div><label for="tapeRate">شريط العزل m/m²</label><input id="tapeRate" type="number" value=".08" min="0" step=".01" inputmode="decimal"></div>
       <div><label for="cleatSpacing">تباعد Cleats mm</label><input id="cleatSpacing" type="number" value="300" min=".1" step=".1" inputmode="decimal"></div>
-      <div><label for="silCoverage">تغطية السيليكون m/Tube</label><input id="silCoverage" type="number" value="10" min=".1" step=".1" inputmode="decimal"></div>
+      <div><label for="silCoverage">Coverage Rate للسيليكون m/Tube</label><input id="silCoverage" type="number" value="10" min=".1" step=".1" inputmode="decimal"></div>
       <div><label for="insWaste">هالك العزل %</label><input id="insWaste" type="number" value="10" min="0" step=".1" inputmode="decimal"></div>
       <div><label for="sheetMaterial">مادة الصاج</label><select id="sheetMaterial"><option value="galvanized">Galvanized steel — 7850 kg/m³</option><option value="aluminum">Aluminum — 2700 kg/m³</option><option value="stainless">Stainless steel — 8000 kg/m³</option></select></div>
     </div>
@@ -46,14 +46,20 @@
       <div><label for="qty">العدد</label><input id="qty" type="number" min="1" step="1" value="1" inputmode="numeric"></div>
       <div><label for="th">سماكة الصاج mm</label><input id="th" type="number" min=".01" value=".8" step=".1" inputmode="decimal"></div>
       <div><label for="insTh">سماكة العزل mm</label><input id="insTh" type="number" min="0" value="25" step=".1" inputmode="decimal"></div>
-      <div><label for="joints">عدد الوصلات</label><input id="joints" type="number" min="0" step="1" value="0" inputmode="numeric"></div>
+      <div><label for="jointCountMode">مصدر عدد الوصلات</label><select id="jointCountMode"><option value="AUTO">AUTO — من التصنيع</option><option value="MANUAL">MANUAL — إدخال صريح</option></select></div>
+      <div><label for="jointType">نوع الوصلة</label><select id="jointType"><option value="">اختر نوع الوصلة</option><option value="TDF">TDF</option><option value="TDC">TDC</option><option value="ANGLE_FLANGE">Angle Flange</option><option value="SLIP_JOINT">Slip Joint</option><option value="CUSTOM">Custom</option></select></div>
+      <div id="fabricationLengthField"><label for="fabricationLength">طول التصنيع Fabrication Length m</label><input id="fabricationLength" type="number" min=".01" step=".01" inputmode="decimal"></div>
+      <div id="manualJointCountField" hidden><label for="manualJointCount">عدد الوصلات اليدوي</label><input id="manualJointCount" type="number" min="0" step="1" inputmode="numeric"></div>
+      <div><label for="boltSpacing">تباعد البراغي Bolt Spacing mm</label><input id="boltSpacing" type="number" min=".01" step=".1" inputmode="decimal"></div>
+      <div><label for="pressureClass">Pressure Class</label><select id="pressureClass"><option value="">غير محدد</option><option value="medium">Medium</option></select></div>
+      <input id="joints" type="hidden" value="0">
     </div>
     <div class="actions">
       <button class="primary" id="addButton" type="button">إضافة</button>
       <button class="secondary" id="clearButton" type="button">مسح</button>
       <button class="danger" id="clearAllButton" type="button">حذف الكل</button>
     </div>
-    <p class="note">إذا كان عدد الوصلات صفرًا، يُقدّر تلقائيًا = العدد - 1. الحقول الفارغة أو غير الصالحة تُرفض ولا تُحوّل إلى صفر.</p>
+    <p class="note">في AUTO يُحسب عدد القطع والوصلات من الطول الكلي وطول التصنيع. في MANUAL يُحترم العدد اليدوي. نوع الوصلة مطلوب، وتباعد البراغي اختياري ويظهر كـ INPUT REQUIRED عند غيابه.</p>
   </section>
 
   <section class="card" aria-labelledby="summaryTitle">
@@ -75,9 +81,10 @@
         <caption class="sr-only">جدول صافي الكميات والهالك وكميات التوريد والملحقات</caption>
         <thead><tr>
           <th scope="col">#</th><th scope="col">النوع</th><th scope="col">المقاس</th><th scope="col">الطول</th><th scope="col">العدد</th>
+          <th scope="col">الأقسام</th><th scope="col">الوصلات</th><th scope="col">مصدر الوصلات</th><th scope="col">نوع الوصلة</th>
           <th scope="col">صافي الدكت m²</th><th scope="col">هالك الدكت m²</th><th scope="col">توريد الدكت m²</th>
           <th scope="col">صافي العزل m²</th><th scope="col">هالك العزل m²</th><th scope="col">توريد العزل m²</th>
-          <th scope="col">غراء kg</th><th scope="col">شريط m</th><th scope="col">G-Flange m</th><th scope="col">Corners</th><th scope="col">Cleats</th><th scope="col">Gasket m</th><th scope="col">Silicone</th><th scope="col">Bolts</th>
+          <th scope="col">غراء kg</th><th scope="col">شريط m</th><th scope="col">G-Flange / Status</th><th scope="col">Corners / Status</th><th scope="col">Cleats / Status</th><th scope="col">Gasket / Status</th><th scope="col">Silicone / Status</th><th scope="col">Bolts / Status</th><th scope="col">Nuts / Status</th><th scope="col">Washers / Status</th>
           <th scope="col">وزن صافي kg</th><th scope="col">وزن توريد kg</th><th scope="col">إجراء</th>
         </tr></thead>
         <tbody id="rows"></tbody>

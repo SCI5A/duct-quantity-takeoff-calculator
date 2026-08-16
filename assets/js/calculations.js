@@ -10,6 +10,36 @@
     aluminum: { label: 'Aluminum', density: 2700 },
     stainless: { label: 'Stainless steel', density: 8000 }
   });
+  const ACCESSORY_STATUS = Object.freeze({
+    CALCULATED: 'CALCULATED',
+    ESTIMATED: 'ESTIMATED',
+    INPUT_REQUIRED: 'INPUT REQUIRED',
+    NOT_APPLICABLE: 'NOT APPLICABLE',
+    LEGACY_ESTIMATE: 'LEGACY ESTIMATE'
+  });
+  const JOINT_MODES = Object.freeze({ AUTO: 'AUTO', MANUAL: 'MANUAL', LEGACY: 'LEGACY' });
+  const JOINT_TYPES = Object.freeze({
+    TDF: Object.freeze({
+      id: 'TDF', name: 'TDF', category: 'flanged', status: 'CONFIGURABLE', classification: 'JOINT-TYPE DEPENDENT',
+      calculationRules: Object.freeze({ matingFlanges: true, cornerUnitsPerJoint: 8, gasketRequired: true, boltRule: 'INPUT_REQUIRED' })
+    }),
+    TDC: Object.freeze({
+      id: 'TDC', name: 'TDC', category: 'flanged', status: 'CONFIGURABLE', classification: 'JOINT-TYPE DEPENDENT',
+      calculationRules: Object.freeze({ matingFlanges: true, cornerUnitsPerJoint: 8, gasketRequired: true, boltRule: 'INPUT_REQUIRED' })
+    }),
+    ANGLE_FLANGE: Object.freeze({
+      id: 'ANGLE_FLANGE', name: 'Angle Flange', category: 'flanged', status: 'CONFIGURABLE', classification: 'JOINT-TYPE DEPENDENT',
+      calculationRules: Object.freeze({ matingFlanges: true, cornerUnitsPerJoint: null, gasketRequired: true, boltRule: 'INPUT_REQUIRED' })
+    }),
+    SLIP_JOINT: Object.freeze({
+      id: 'SLIP_JOINT', name: 'Slip Joint', category: 'slip', status: 'CONFIGURABLE', classification: 'JOINT-TYPE DEPENDENT',
+      calculationRules: Object.freeze({ matingFlanges: false, cornerUnitsPerJoint: 0, gasketRequired: false, boltRule: 'NOT_APPLICABLE' })
+    }),
+    CUSTOM: Object.freeze({
+      id: 'CUSTOM', name: 'Custom', category: 'custom', status: 'CONFIGURABLE', classification: 'INPUT REQUIRED',
+      calculationRules: Object.freeze({ matingFlanges: null, cornerUnitsPerJoint: null, gasketRequired: null, boltRule: 'INPUT_REQUIRED' })
+    })
+  });
 
   function finite(value, label) {
     if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
@@ -18,6 +48,11 @@
     const number = Number(value);
     if (!Number.isFinite(number)) throw new Error(`${label} must be a finite number.`);
     return number;
+  }
+
+  function optionalFinite(value, label) {
+    if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) return null;
+    return finite(value, label);
   }
 
   function nonNegative(value, label, allowZero = true) {
@@ -30,8 +65,22 @@
     return nonNegative(value, label, false);
   }
 
+  function optionalPositive(value, label) {
+    const number = optionalFinite(value, label);
+    if (number === null) return null;
+    if (number <= 0) throw new Error(`${label} must be greater than zero.`);
+    return number;
+  }
+
   function integerAtLeast(value, label, minimum) {
     const number = finite(value, label);
+    if (!Number.isInteger(number) || number < minimum) throw new Error(`${label} must be an integer >= ${minimum}.`);
+    return number;
+  }
+
+  function optionalIntegerAtLeast(value, label, minimum) {
+    const number = optionalFinite(value, label);
+    if (number === null) return null;
     if (!Number.isInteger(number) || number < minimum) throw new Error(`${label} must be an integer >= ${minimum}.`);
     return number;
   }
@@ -43,44 +92,167 @@
     const quantity = integerAtLeast(input.qty, 'Quantity', 1);
     const sheetThicknessMm = positive(input.th, 'Sheet thickness');
     const insulationThicknessMm = nonNegative(input.insTh, 'Insulation thickness');
-    const joints = integerAtLeast(input.joints, 'Joints', 0);
+    const joints = optionalIntegerAtLeast(input.joints ?? 0, 'Joints', 0) ?? 0;
     const sheetMaterial = Object.prototype.hasOwnProperty.call(SHEET_MATERIALS, input.sheetMaterial) ? input.sheetMaterial : 'galvanized';
     const density = positive(input.sheetDensity, 'Sheet density');
     const widthMm = type === 'rect' ? positive(input.w, 'Width') : 0;
     const heightMm = type === 'rect' ? positive(input.h, 'Height') : 0;
     const diameterMm = type === 'round' ? positive(input.d, 'Diameter') : 0;
     return {
-      type,
-      widthMm,
-      heightMm,
-      diameterMm,
-      lengthM,
-      quantity,
-      sheetThicknessMm,
-      insulationThicknessMm,
-      joints,
-      sheetMaterial,
-      sheetDensity: density,
+      type, widthMm, heightMm, diameterMm, lengthM, quantity, sheetThicknessMm,
+      insulationThicknessMm, joints, sheetMaterial, sheetDensity: density,
       widthM: widthMm * UNIT_FACTORS.mmToM,
       heightM: heightMm * UNIT_FACTORS.mmToM,
       diameterM: diameterMm * UNIT_FACTORS.mmToM
     };
   }
 
-  function normalizeSettings(settings) {
+  function normalizeSettings(settings, options = {}) {
+    const optionalJointInputs = options.optionalJointInputs === true;
+    const cleatSpacing = optionalJointInputs && (settings.cleatSpacing === null || settings.cleatSpacing === undefined || settings.cleatSpacing === '')
+      ? null : positive(settings.cleatSpacing, 'Cleat spacing');
+    const silCoverage = optionalJointInputs && (settings.silCoverage === null || settings.silCoverage === undefined || settings.silCoverage === '')
+      ? null : positive(settings.silCoverage, 'Silicone coverage');
     return {
       waste: nonNegative(settings.waste, 'Duct waste'),
       adhRate: nonNegative(settings.adhRate, 'Adhesive rate'),
       tapeRate: nonNegative(settings.tapeRate, 'Tape rate'),
-      cleatSpacing: positive(settings.cleatSpacing, 'Cleat spacing'),
-      silCoverage: positive(settings.silCoverage, 'Silicone coverage'),
+      cleatSpacing,
+      silCoverage,
       insWaste: nonNegative(settings.insWaste, 'Insulation waste')
+    };
+  }
+
+  function hasJointModel(input) {
+    return input.jointCountMode !== undefined || input.jointType !== undefined || input.fabricationLength !== undefined ||
+      input.fabricationLengthM !== undefined || input.sectionCount !== undefined || input.manualJointCount !== undefined ||
+      input.boltSpacing !== undefined || input.pressureClass !== undefined;
+  }
+
+  function normalizeJointType(value) {
+    if (!value) throw new Error('Joint type is required.');
+    const id = String(value).toUpperCase();
+    if (!Object.prototype.hasOwnProperty.call(JOINT_TYPES, id)) throw new Error('Joint type is invalid.');
+    return JOINT_TYPES[id];
+  }
+
+  function calculateSectionCount(totalLengthM, fabricationLengthM) {
+    const total = positive(totalLengthM, 'Total duct length');
+    const fabrication = positive(fabricationLengthM, 'Fabrication length');
+    return Math.max(1, Math.ceil(total / fabrication));
+  }
+
+  function calculateJointCount({ mode, totalLengthM, fabricationLengthM, manualJointCount, legacyJointCount }) {
+    if (mode === JOINT_MODES.MANUAL) {
+      return { sectionCount: fabricationLengthM === null ? null : calculateSectionCount(totalLengthM, fabricationLengthM), jointCount: integerAtLeast(manualJointCount, 'Manual joint count', 0), source: 'MANUAL' };
+    }
+    if (mode === JOINT_MODES.LEGACY) {
+      const legacy = integerAtLeast(legacyJointCount, 'Legacy joint count', 0);
+      return { sectionCount: null, jointCount: legacy, source: 'LEGACY_ESTIMATE' };
+    }
+    const sectionCount = calculateSectionCount(totalLengthM, fabricationLengthM);
+    return { sectionCount, jointCount: Math.max(0, sectionCount - 1), source: 'FABRICATION-SECTION DERIVED' };
+  }
+
+  function normalizeJointModel(input, dimensions) {
+    const explicit = hasJointModel(input);
+    if (!explicit) {
+      const legacyJointCount = dimensions.joints > 0 ? dimensions.joints : Math.max(0, dimensions.quantity - 1);
+      return {
+        mode: JOINT_MODES.LEGACY, jointCountMode: JOINT_MODES.LEGACY, jointType: 'TDF', jointTypeDefinition: JOINT_TYPES.TDF,
+        fabricationLengthM: null, sectionCount: null, jointCount: legacyJointCount, manualJointCount: null,
+        jointCountSource: 'LEGACY_ESTIMATE', pressureClass: null, boltSpacingMm: null, boltSize: null, boltLengthMm: null,
+        explicit: false
+      };
+    }
+    const mode = String(input.jointCountMode || JOINT_MODES.AUTO).toUpperCase();
+    if (![JOINT_MODES.AUTO, JOINT_MODES.MANUAL, JOINT_MODES.LEGACY].includes(mode)) throw new Error('Joint count mode is invalid.');
+    const jointTypeDefinition = normalizeJointType(input.jointType || (mode === JOINT_MODES.LEGACY ? 'TDF' : null));
+    const totalLengthM = dimensions.lengthM * dimensions.quantity;
+    const fabricationLengthM = optionalPositive(input.fabricationLengthM ?? input.fabricationLength, 'Fabrication length');
+    const manualJointCount = optionalIntegerAtLeast(input.manualJointCount, 'Manual joint count', 0);
+    if (mode === JOINT_MODES.AUTO && fabricationLengthM === null) throw new Error('Fabrication length is required for automatic joint calculation.');
+    if (mode === JOINT_MODES.MANUAL && manualJointCount === null) throw new Error('Manual joint count is required in MANUAL mode.');
+    const legacyJointCount = optionalIntegerAtLeast(input.jointCount ?? input.joints ?? dimensions.joints, 'Legacy joint count', 0) ?? dimensions.joints;
+    const counts = calculateJointCount({ mode, totalLengthM, fabricationLengthM, manualJointCount, legacyJointCount });
+    return {
+      mode, jointCountMode: mode, jointType: jointTypeDefinition.id, jointTypeDefinition, jointClassification: jointTypeDefinition.classification,
+      fabricationLengthM, sectionCount: counts.sectionCount, jointCount: counts.jointCount,
+      manualJointCount, jointCountSource: counts.source, pressureClass: input.pressureClass || null,
+      boltSpacingMm: optionalPositive(input.boltSpacing, 'Bolt spacing'),
+      boltSize: input.boltSize || null,
+      boltLengthMm: optionalPositive(input.boltLength, 'Bolt length'),
+      explicit: true
+    };
+  }
+
+  function calculateJointPerimeter(perimeterM, jointCount, jointTypeDefinition) {
+    const count = integerAtLeast(jointCount, 'Joint count', 0);
+    if (!jointTypeDefinition.calculationRules.matingFlanges) return { value: 0, status: ACCESSORY_STATUS.NOT_APPLICABLE, formula: 'No mating-flange rule for this joint type.' };
+    return { value: perimeterM * count * 2, status: ACCESSORY_STATUS.CALCULATED, formula: `${perimeterM} × ${count} × 2` };
+  }
+
+  function calculateJointAccessories({ perimeterM, dimensions, settings, jointModel }) {
+    const rules = jointModel.jointTypeDefinition.calculationRules;
+    const jointPerimeter = calculateJointPerimeter(perimeterM, jointModel.jointCount, jointModel.jointTypeDefinition);
+    const flange = jointPerimeter.value;
+    const cornerUnits = dimensions.type === 'rect' ? rules.cornerUnitsPerJoint : 0;
+    const corners = dimensions.type !== 'rect'
+      ? { quantity: 0, status: ACCESSORY_STATUS.NOT_APPLICABLE, reason: 'Corners are not applicable to round duct.' }
+      : cornerUnits === null
+        ? { quantity: 0, status: ACCESSORY_STATUS.INPUT_REQUIRED, reason: 'Corner rule is not defined for this joint type.' }
+        : { quantity: cornerUnits * jointModel.jointCount, status: jointModel.jointCountMode === JOINT_MODES.LEGACY ? ACCESSORY_STATUS.LEGACY_ESTIMATE : ACCESSORY_STATUS.ESTIMATED, reason: 'Joint-type rule; verify against project connection detail.' };
+    const cleats = flange > 0 && settings.cleatSpacing !== null
+      ? { quantity: Math.ceil(flange / (settings.cleatSpacing * UNIT_FACTORS.mmToM)), status: ACCESSORY_STATUS.ESTIMATED, reason: 'SPACING-BASED ESTIMATE' }
+      : { quantity: 0, status: flange === 0 ? ACCESSORY_STATUS.NOT_APPLICABLE : ACCESSORY_STATUS.INPUT_REQUIRED, reason: 'Cleat spacing is required to calculate cleat quantity.' };
+    const gasketRequired = rules.gasketRequired;
+    const gasket = gasketRequired === false
+      ? { required: false, length: 0, waste: 0, procurement: 0, status: ACCESSORY_STATUS.NOT_APPLICABLE, reason: 'Joint type does not define a gasket requirement.' }
+      : gasketRequired === null
+        ? { required: null, length: 0, waste: 0, procurement: 0, status: ACCESSORY_STATUS.INPUT_REQUIRED, reason: 'Gasket rule is required for CUSTOM joint type.' }
+        : { required: true, length: flange, waste: 0, procurement: flange, status: ACCESSORY_STATUS.CALCULATED, reason: 'Joint-type gasket rule; no waste rate assumed.' };
+    const silicone = flange === 0
+      ? { quantity: 0, status: ACCESSORY_STATUS.NOT_APPLICABLE, reason: 'No flange length defined.' }
+      : settings.silCoverage === null
+        ? { quantity: 0, status: ACCESSORY_STATUS.INPUT_REQUIRED, reason: 'Silicone coverage is required to calculate sealant.' }
+        : { quantity: Math.ceil(flange / settings.silCoverage), status: ACCESSORY_STATUS.ESTIMATED, reason: 'USER / PROJECT RATE' };
+    const bolts = flange === 0 && rules.boltRule === 'NOT_APPLICABLE'
+      ? { quantity: 0, status: ACCESSORY_STATUS.NOT_APPLICABLE, reason: 'Joint type has no bolt rule.' }
+      : jointModel.boltSpacingMm !== null && flange > 0
+        ? { quantity: Math.ceil(flange / (jointModel.boltSpacingMm * UNIT_FACTORS.mmToM)), status: ACCESSORY_STATUS.ESTIMATED, reason: 'SPACING-BASED ESTIMATE; verify connection detail.' }
+        : { quantity: 0, status: jointModel.jointCountMode === JOINT_MODES.LEGACY ? ACCESSORY_STATUS.LEGACY_ESTIMATE : ACCESSORY_STATUS.INPUT_REQUIRED, reason: 'Bolt spacing is required to calculate bolt quantity.' };
+    const legacyBolts = jointModel.jointCountMode === JOINT_MODES.LEGACY
+      ? { quantity: cleats.quantity, status: ACCESSORY_STATUS.LEGACY_ESTIMATE, reason: 'Legacy compatibility only; Bolts = Cleats is not a universal engineering rule.' }
+      : bolts;
+    const nuts = legacyBolts.status === ACCESSORY_STATUS.LEGACY_ESTIMATE
+      ? { quantity: legacyBolts.quantity, status: ACCESSORY_STATUS.LEGACY_ESTIMATE, reason: 'Legacy compatibility only.' }
+      : legacyBolts.status === ACCESSORY_STATUS.NOT_APPLICABLE
+        ? { quantity: 0, status: ACCESSORY_STATUS.NOT_APPLICABLE, reason: 'No bolt connection defined.' }
+        : { quantity: 0, status: ACCESSORY_STATUS.INPUT_REQUIRED, reason: 'Nut connection rule is required.' };
+    const washers = legacyBolts.status === ACCESSORY_STATUS.LEGACY_ESTIMATE
+      ? { quantity: legacyBolts.quantity, status: ACCESSORY_STATUS.LEGACY_ESTIMATE, reason: 'Legacy compatibility only.' }
+      : legacyBolts.status === ACCESSORY_STATUS.NOT_APPLICABLE
+        ? { quantity: 0, status: ACCESSORY_STATUS.NOT_APPLICABLE, reason: 'No bolt connection defined.' }
+        : { quantity: 0, status: ACCESSORY_STATUS.INPUT_REQUIRED, reason: 'Washer connection rule is required.' };
+    return {
+      jointPerimeterM: jointPerimeter.value,
+      jointPerimeterStatus: jointPerimeter.status,
+      flange: { quantity: flange, status: flange > 0 ? ACCESSORY_STATUS.CALCULATED : ACCESSORY_STATUS.NOT_APPLICABLE, reason: rules.matingFlanges ? 'Joint-type mating-flange rule.' : 'No mating-flange rule.' },
+      corners,
+      cleats,
+      gasket,
+      silicone,
+      bolts: legacyBolts,
+      nuts,
+      washers
     };
   }
 
   function calculateItem(input, settings) {
     const dimensions = normalizeDimensions(input);
-    const rates = normalizeSettings(settings);
+    const explicitJointModel = hasJointModel(input);
+    const rates = normalizeSettings(settings, { optionalJointInputs: explicitJointModel });
+    const jointModel = normalizeJointModel(input, dimensions);
     const perimeterM = dimensions.type === 'rect'
       ? 2 * (dimensions.widthM + dimensions.heightM)
       : Math.PI * dimensions.diameterM;
@@ -91,53 +263,50 @@
     const insulationWasteArea = netInsulationArea * rates.insWaste / 100;
     const procurementInsulationArea = netInsulationArea + insulationWasteArea;
     const insulationVolume = procurementInsulationArea * dimensions.insulationThicknessMm * UNIT_FACTORS.mmToM;
-    const effectiveJoints = dimensions.joints > 0 ? dimensions.joints : Math.max(0, dimensions.quantity - 1);
-    const jointPerimeterM = perimeterM * effectiveJoints * 2;
-    const flange = jointPerimeterM;
-    const corners = dimensions.type === 'rect' ? 8 * effectiveJoints : 0;
-    const cleats = rates.cleatSpacing > 0 ? Math.ceil(jointPerimeterM / (rates.cleatSpacing * UNIT_FACTORS.mmToM)) : 0;
-    const gasket = jointPerimeterM;
-    const silicone = Math.ceil(jointPerimeterM / rates.silCoverage);
-    const bolts = cleats;
+    const accessories = calculateJointAccessories({ perimeterM, dimensions, settings: rates, jointModel });
     const netWeight = netArea * (dimensions.sheetThicknessMm * UNIT_FACTORS.mmToM) * dimensions.sheetDensity;
     const wasteWeight = ductWasteArea * (dimensions.sheetThicknessMm * UNIT_FACTORS.mmToM) * dimensions.sheetDensity;
     const procurementWeight = procurementDuctArea * (dimensions.sheetThicknessMm * UNIT_FACTORS.mmToM) * dimensions.sheetDensity;
     const adhesive = procurementInsulationArea * rates.adhRate;
     const tape = procurementInsulationArea * rates.tapeRate;
-
     return {
-      ...dimensions,
-      ...rates,
-      wasteRate: rates.waste,
-      insulationWasteRate: rates.insWaste,
-      perimeterM,
-      netArea,
-      ductWasteArea,
-      procurementDuctArea,
-      netInsulationArea,
-      insulationWasteArea,
-      procurementInsulationArea,
-      insulationVolume,
-      joints: effectiveJoints,
-      flange,
-      corners,
-      cleats,
-      gasket,
-      silicone,
-      bolts,
-      netWeight,
-      wasteWeight,
-      procurementWeight,
-      weight: procurementWeight,
-      adhesive,
-      tape,
-      // Legacy aliases retained for existing saved BOQ compatibility.
-      area: netArea,
-      waste: ductWasteArea,
-      total: procurementDuctArea,
-      ins: procurementInsulationArea
+      ...dimensions, ...rates, ...jointModel,
+      wasteRate: rates.waste, insulationWasteRate: rates.insWaste,
+      perimeterM, netArea, ductWasteArea, procurementDuctArea,
+      netInsulationArea, insulationWasteArea, procurementInsulationArea, insulationVolume,
+      jointPerimeterM: accessories.jointPerimeterM,
+      joints: jointModel.jointCount,
+      flange: accessories.flange.quantity,
+      flangeStatus: accessories.flange.status,
+      corners: accessories.corners.quantity,
+      cornersStatus: accessories.corners.status,
+      cleats: accessories.cleats.quantity,
+      cleatsStatus: accessories.cleats.status,
+      gasketRequired: accessories.gasket.required,
+      gasketLength: accessories.gasket.length,
+      gasket: accessories.gasket.length,
+      gasketWaste: accessories.gasket.waste,
+      gasketProcurement: accessories.gasket.procurement,
+      gasketStatus: accessories.gasket.status,
+      silicone: accessories.silicone.quantity,
+      siliconeStatus: accessories.silicone.status,
+      siliconeSource: accessories.silicone.reason,
+      bolts: accessories.bolts.quantity,
+      boltsStatus: accessories.bolts.status,
+      nuts: accessories.nuts.quantity,
+      nutsStatus: accessories.nuts.status,
+      washers: accessories.washers.quantity,
+      washersStatus: accessories.washers.status,
+      accessoryDetails: accessories,
+      netWeight, wasteWeight, procurementWeight, weight: procurementWeight,
+      adhesive, tape,
+      area: netArea, waste: ductWasteArea, total: procurementDuctArea, ins: procurementInsulationArea
     };
   }
 
-  return Object.freeze({ UNIT_FACTORS, SHEET_MATERIALS, normalizeDimensions, normalizeSettings, calculateItem });
+  return Object.freeze({
+    UNIT_FACTORS, SHEET_MATERIALS, ACCESSORY_STATUS, JOINT_MODES, JOINT_TYPES,
+    normalizeDimensions, normalizeSettings, normalizeJointType, calculateSectionCount,
+    calculateJointCount, calculateJointPerimeter, calculateJointAccessories, calculateItem
+  });
 });
