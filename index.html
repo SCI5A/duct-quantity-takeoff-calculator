@@ -1,39 +1,93 @@
 <!doctype html>
-<html lang="ar" dir="rtl"><head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Duct Quantity & Accessories Calculator</title><link rel="stylesheet" href="assets/css/style.css">
-</head><body>
-<header><h1>حاسبة كميات الدكت وملحقاته</h1><p>Duct Quantity & Accessories Calculator</p></header>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="حاسبة كميات الدكت وملحقاته مع فصل صافي الكميات والهالك والتوريد">
+<title>Duct Quantity &amp; Accessories Calculator</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+<header>
+  <h1>حاسبة كميات الدكت وملحقاته</h1>
+  <p>Duct Quantity &amp; Accessories Calculator</p>
+</header>
 <main>
-<section class="card presentation-entry"><h2>العرض التعليمي</h2><p class="note">شرح عملي لإعداد معدلات الاستهلاك، إدخال الدكت، قراءة BOQ، وتصدير النتائج.</p><div class="actions"><a class="primary presentation-link" href="presentation/">📊 العرض التعليمي</a></div></section>
-<section class="card"><h2>إعدادات الاستهلاك</h2><div class="grid">
-<div><label>هالك الدكت %</label><input id="waste" type="number" value="10" min="0" step=".1"></div>
-<div><label>غراء العزل kg/m²</label><input id="adhRate" type="number" value=".25" min="0" step=".01"></div>
-<div><label>شريط العزل m/m²</label><input id="tapeRate" type="number" value=".08" min="0" step=".01"></div>
-<div><label>تباعد Cleats mm</label><input id="cleatSpacing" type="number" value="300" min="1"></div>
-<div><label>تغطية السيليكون m/Tube</label><input id="silCoverage" type="number" value="10" min=".1" step=".1"></div>
-<div><label>هالك العزل %</label><input id="insWaste" type="number" value="10" min="0" step=".1"></div>
-</div><p class="note">عدّل معدلات الغراء والشريط والسيليكون حسب Technical Data Sheet للمادة.</p></section>
+  <section class="card presentation-entry">
+    <h2>العرض التعليمي</h2>
+    <p class="note">شرح عملي لإعداد معدلات الاستهلاك، إدخال الدكت، قراءة BOQ، وتصدير النتائج.</p>
+    <div class="actions"><a class="primary presentation-link" href="presentation/">📊 العرض التعليمي</a></div>
+  </section>
 
-<section class="card"><h2>إضافة دكت</h2><div class="grid">
-<div><label>نوع الدكت</label><select id="type"><option value="rect">مستطيل</option><option value="round">دائري</option></select></div>
-<div><label>العرض W mm</label><input id="w" type="number"></div>
-<div><label>الارتفاع H mm</label><input id="h" type="number"></div>
-<div><label>القطر D mm</label><input id="d" type="number"></div>
-<div><label>الطول L m</label><input id="l" type="number" step=".01"></div>
-<div><label>العدد</label><input id="qty" type="number" min="1" value="1"></div>
-<div><label>سماكة الصاج mm</label><input id="th" type="number" value=".8" step=".1"></div>
-<div><label>سماكة العزل mm</label><input id="insTh" type="number" value="25"></div>
-<div><label>عدد الوصلات</label><input id="joints" type="number" min="0" value="0"></div>
-</div><div class="actions">
-<button class="primary" onclick="addItem()">إضافة</button><button class="secondary" onclick="clearForm()">مسح</button><button class="danger" onclick="clearAll()">حذف الكل</button>
-</div><p class="note">إذا كان عدد الوصلات صفرًا، يُقدّر تلقائيًا = العدد - 1.</p></section>
+  <p id="status" class="status" role="status" aria-live="polite" hidden></p>
 
-<section class="card"><h2>الإجماليات</h2><div class="summary" id="summary"></div>
-<div class="actions"><button class="secondary" onclick="exportCSV()">تصدير CSV</button><button class="secondary" onclick="window.print()">طباعة / PDF</button></div></section>
+  <section class="card" aria-labelledby="settingsTitle">
+    <h2 id="settingsTitle">إعدادات الاستهلاك</h2>
+    <div class="grid">
+      <div><label for="waste">هالك الدكت %</label><input id="waste" type="number" value="10" min="0" step=".1" inputmode="decimal"></div>
+      <div><label for="adhRate">غراء العزل kg/m²</label><input id="adhRate" type="number" value=".25" min="0" step=".01" inputmode="decimal"></div>
+      <div><label for="tapeRate">شريط العزل m/m²</label><input id="tapeRate" type="number" value=".08" min="0" step=".01" inputmode="decimal"></div>
+      <div><label for="cleatSpacing">تباعد Cleats mm</label><input id="cleatSpacing" type="number" value="300" min=".1" step=".1" inputmode="decimal"></div>
+      <div><label for="silCoverage">تغطية السيليكون m/Tube</label><input id="silCoverage" type="number" value="10" min=".1" step=".1" inputmode="decimal"></div>
+      <div><label for="insWaste">هالك العزل %</label><input id="insWaste" type="number" value="10" min="0" step=".1" inputmode="decimal"></div>
+      <div><label for="sheetMaterial">مادة الصاج</label><select id="sheetMaterial"><option value="galvanized">Galvanized steel — 7850 kg/m³</option><option value="aluminum">Aluminum — 2700 kg/m³</option><option value="stainless">Stainless steel — 8000 kg/m³</option></select></div>
+    </div>
+    <p class="note">عدّل المعدلات حسب Technical Data Sheet للمادة. الكثافة تُستخدم لحساب الوزن، ولا تغيّر مساحة الدكت.</p>
+  </section>
 
-<section class="card"><h2>BOQ — جدول الكميات</h2><div class="tableWrap"><table><thead><tr>
-<th>#</th><th>النوع</th><th>المقاس</th><th>الطول</th><th>العدد</th><th>الدكت m²</th><th>العزل m²</th><th>غراء kg</th><th>G-Flange m</th><th>Corners</th><th>Cleats</th><th>Gasket m</th><th>Silicone</th><th>Bolts</th><th>الوزن kg</th><th>إجراء</th>
-</tr></thead><tbody id="rows"></tbody></table></div></section>
-</main><footer>Duct Quantity & Accessories Calculator — GitHub Pages</footer>
-<script src="assets/js/app.js"></script></body></html>
+  <section class="card" aria-labelledby="ductTitle">
+    <h2 id="ductTitle">إضافة دكت</h2>
+    <div class="grid">
+      <div><label for="type">نوع الدكت</label><select id="type"><option value="rect">مستطيل</option><option value="round">دائري</option></select></div>
+      <div><label for="w">العرض W mm</label><input id="w" type="number" min=".01" step=".01" inputmode="decimal"></div>
+      <div><label for="h">الارتفاع H mm</label><input id="h" type="number" min=".01" step=".01" inputmode="decimal"></div>
+      <div><label for="d">القطر D mm</label><input id="d" type="number" min=".01" step=".01" inputmode="decimal" disabled></div>
+      <div><label for="l">الطول L m</label><input id="l" type="number" min=".01" step=".01" inputmode="decimal"></div>
+      <div><label for="qty">العدد</label><input id="qty" type="number" min="1" step="1" value="1" inputmode="numeric"></div>
+      <div><label for="th">سماكة الصاج mm</label><input id="th" type="number" min=".01" value=".8" step=".1" inputmode="decimal"></div>
+      <div><label for="insTh">سماكة العزل mm</label><input id="insTh" type="number" min="0" value="25" step=".1" inputmode="decimal"></div>
+      <div><label for="joints">عدد الوصلات</label><input id="joints" type="number" min="0" step="1" value="0" inputmode="numeric"></div>
+    </div>
+    <div class="actions">
+      <button class="primary" id="addButton" type="button">إضافة</button>
+      <button class="secondary" id="clearButton" type="button">مسح</button>
+      <button class="danger" id="clearAllButton" type="button">حذف الكل</button>
+    </div>
+    <p class="note">إذا كان عدد الوصلات صفرًا، يُقدّر تلقائيًا = العدد - 1. الحقول الفارغة أو غير الصالحة تُرفض ولا تُحوّل إلى صفر.</p>
+  </section>
+
+  <section class="card" aria-labelledby="summaryTitle">
+    <h2 id="summaryTitle">الإجماليات</h2>
+    <div class="summary" id="summary"></div>
+    <div class="actions"><button class="secondary" id="csvButton" type="button">تصدير CSV</button><button class="secondary" id="printButton" type="button">طباعة / PDF</button></div>
+  </section>
+
+  <section class="card formula-card" id="formulaViewer" aria-labelledby="formulaTitle" hidden>
+    <div class="section-heading"><h2 id="formulaTitle">عارض المعادلات</h2><button class="secondary" id="closeFormulaButton" type="button">إغلاق</button></div>
+    <p class="note" id="formulaSubtitle"></p>
+    <div class="formula-grid" id="formulaContent"></div>
+  </section>
+
+  <section class="card" aria-labelledby="boqTitle">
+    <h2 id="boqTitle">BOQ — جدول الكميات</h2>
+    <div class="tableWrap">
+      <table>
+        <caption class="sr-only">جدول صافي الكميات والهالك وكميات التوريد والملحقات</caption>
+        <thead><tr>
+          <th scope="col">#</th><th scope="col">النوع</th><th scope="col">المقاس</th><th scope="col">الطول</th><th scope="col">العدد</th>
+          <th scope="col">صافي الدكت m²</th><th scope="col">هالك الدكت m²</th><th scope="col">توريد الدكت m²</th>
+          <th scope="col">صافي العزل m²</th><th scope="col">هالك العزل m²</th><th scope="col">توريد العزل m²</th>
+          <th scope="col">غراء kg</th><th scope="col">شريط m</th><th scope="col">G-Flange m</th><th scope="col">Corners</th><th scope="col">Cleats</th><th scope="col">Gasket m</th><th scope="col">Silicone</th><th scope="col">Bolts</th>
+          <th scope="col">وزن صافي kg</th><th scope="col">وزن توريد kg</th><th scope="col">إجراء</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<footer>Duct Quantity &amp; Accessories Calculator — GitHub Pages</footer>
+<noscript><p class="noscript">يحتاج التطبيق إلى JavaScript ليعمل.</p></noscript>
+<script src="assets/js/calculations.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>

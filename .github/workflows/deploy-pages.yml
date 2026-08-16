@@ -1,29 +1,62 @@
 name: Deploy to GitHub Pages
+
 on:
   push:
     branches: ["main"]
   workflow_dispatch:
+
 permissions:
   contents: read
   pages: write
   id-token: write
+
 concurrency:
   group: pages
   cancel-in-progress: true
+
 jobs:
+  quality:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check JavaScript syntax
+        run: |
+          node --check assets/js/calculations.js
+          node --check assets/js/app.js
+          node --check presentation/presentation.js
+          node --check tests/engineering-tests.js
+          node --check tests/quality-gates.js
+      - name: Run engineering test suite
+        run: node tests/engineering-tests.js
+      - name: Run static quality gates
+        run: node tests/quality-gates.js
+      - name: Check whitespace errors
+        run: git diff --check
+
   deploy:
+    name: Deploy
+    needs: quality
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
         with:
           enablement: true
-      - uses: actions/upload-pages-artifact@v3
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
         with:
           path: "."
-      - name: Deploy
+      - name: Deploy to Pages
         id: deployment
         uses: actions/deploy-pages@v4

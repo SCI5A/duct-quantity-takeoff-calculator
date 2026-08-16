@@ -1,10 +1,10 @@
 (() => {
   'use strict';
 
-  const TOTAL_SLIDES = 11;
   const slideImage = document.getElementById('slideImage');
   const slideCounter = document.getElementById('slideCounter');
   const progressBar = document.getElementById('progressBar');
+  const progressTrack = document.getElementById('progressTrack');
   const thumbnails = document.getElementById('thumbnails');
   const stage = document.getElementById('stage');
   const loadingIndicator = document.getElementById('loadingIndicator');
@@ -13,20 +13,43 @@
   const stopButton = document.getElementById('stopButton');
   const previousButtons = [document.getElementById('previousButton'), document.getElementById('previousButtonBottom')];
   const nextButtons = [document.getElementById('nextButton'), document.getElementById('nextButtonBottom')];
-  const slidePath = index => `slides/${String(index).padStart(2, '0')}.webp`;
+  const MANIFEST_PATH = 'slides/manifest.json';
+  let slideFiles = [];
   let currentSlide = 1;
   let autoplayTimer = null;
   let touchStartX = null;
+  const preloadCache = new Map();
+
+  function totalSlides() {
+    return slideFiles.length;
+  }
+
+  function slidePath(index) {
+    return `slides/${encodeURIComponent(slideFiles[index - 1])}`;
+  }
 
   function setLoading(isLoading) {
     loadingIndicator.classList.toggle('visible', isLoading);
   }
 
+  function setProgress() {
+    const total = totalSlides();
+    const value = total ? Math.round((currentSlide / total) * 100) : 0;
+    progressBar.style.width = `${value}%`;
+    progressTrack.setAttribute('aria-valuemax', String(total));
+    progressTrack.setAttribute('aria-valuenow', String(currentSlide));
+    progressTrack.setAttribute('aria-valuetext', total ? `الشريحة ${currentSlide} من ${total}` : 'لا توجد شرائح');
+  }
+
   function preload(index) {
-    if (index < 1 || index > TOTAL_SLIDES) return;
+    if (index < 1 || index > totalSlides() || preloadCache.has(index)) return;
     const image = new Image();
     image.decoding = 'async';
     image.src = slidePath(index);
+    preloadCache.set(index, image);
+    while (preloadCache.size > 3) {
+      preloadCache.delete(preloadCache.keys().next().value);
+    }
   }
 
   function updateThumbnails() {
@@ -36,11 +59,13 @@
       button.setAttribute('aria-current', active ? 'true' : 'false');
     });
     const active = thumbnails.querySelector(`[data-slide="${currentSlide}"]`);
-    if (active) active.scrollIntoView({block: 'nearest', inline: 'nearest'});
+    if (active) active.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
 
   function updateSlide(index) {
-    currentSlide = Math.max(1, Math.min(TOTAL_SLIDES, index));
+    const total = totalSlides();
+    if (!total) return;
+    currentSlide = Math.max(1, Math.min(total, index));
     const nextSource = slidePath(currentSlide);
     setLoading(true);
     slideImage.alt = `الشريحة ${currentSlide} من العرض التعليمي`;
@@ -48,61 +73,106 @@
     slideImage.onerror = () => {
       setLoading(false);
       slideImage.alt = `تعذر تحميل الشريحة ${currentSlide}`;
+      slideCounter.textContent = `تعذر تحميل الشريحة ${currentSlide} من ${total}`;
     };
     if (slideImage.getAttribute('src') !== nextSource) slideImage.src = nextSource;
     else setLoading(false);
-    slideCounter.textContent = `الشريحة ${currentSlide} من ${TOTAL_SLIDES}`;
-    progressBar.style.width = `${(currentSlide / TOTAL_SLIDES) * 100}%`;
+    slideCounter.textContent = `الشريحة ${currentSlide} من ${total}`;
+    setProgress();
     updateThumbnails();
     preload(currentSlide + 1);
+    preload(currentSlide - 1);
   }
 
   function goNext() {
-    updateSlide(currentSlide === TOTAL_SLIDES ? 1 : currentSlide + 1);
+    if (!totalSlides()) return;
+    updateSlide(currentSlide === totalSlides() ? 1 : currentSlide + 1);
   }
 
   function goPrevious() {
-    updateSlide(currentSlide === 1 ? TOTAL_SLIDES : currentSlide - 1);
+    if (!totalSlides()) return;
+    updateSlide(currentSlide === 1 ? totalSlides() : currentSlide - 1);
   }
 
   function stopAutoplay() {
     if (autoplayTimer) window.clearInterval(autoplayTimer);
     autoplayTimer = null;
     autoplayButton.disabled = false;
+    autoplayButton.setAttribute('aria-pressed', 'false');
     stopButton.disabled = true;
   }
 
   function startAutoplay() {
+    if (totalSlides() < 2) return;
     stopAutoplay();
     autoplayTimer = window.setInterval(goNext, 5000);
     autoplayButton.disabled = true;
+    autoplayButton.setAttribute('aria-pressed', 'true');
     stopButton.disabled = false;
   }
 
-  function toggleFullscreen() {
-    if (!document.fullscreenElement) {
-      if (stage.requestFullscreen) stage.requestFullscreen();
-    } else if (document.exitFullscreen) {
-      document.exitFullscreen();
+  async function toggleFullscreen() {
+    try {
+      if (!document.fullscreenElement) {
+        if (!stage.requestFullscreen) throw new Error('Fullscreen is not supported.');
+        await stage.requestFullscreen();
+      } else if (document.exitFullscreen) {
+        await document.exitFullscreen();
+      }
+    } catch (error) {
+      console.warn('Fullscreen was not available:', error);
+      slideCounter.textContent = 'تعذر تفعيل ملء الشاشة في هذا المتصفح';
+      window.setTimeout(() => updateSlide(currentSlide), 1800);
     }
   }
 
   function renderThumbnails() {
     const fragment = document.createDocumentFragment();
-    for (let index = 1; index <= TOTAL_SLIDES; index += 1) {
+    slideFiles.forEach((file, index) => {
+      const slideNumber = index + 1;
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'thumbnail';
-      button.dataset.slide = String(index);
-      button.setAttribute('aria-label', `الانتقال إلى الشريحة ${index}`);
-      button.innerHTML = `<img src="${slidePath(index)}" alt="" loading="lazy" decoding="async"><span class="thumbnail-label">الشريحة ${index}</span>`;
+      button.dataset.slide = String(slideNumber);
+      button.setAttribute('aria-label', `الانتقال إلى الشريحة ${slideNumber}`);
+      const image = document.createElement('img');
+      image.src = slidePath(slideNumber);
+      image.alt = '';
+      image.loading = 'lazy';
+      image.decoding = 'async';
+      const label = document.createElement('span');
+      label.className = 'thumbnail-label';
+      label.textContent = `الشريحة ${slideNumber}`;
+      button.append(image, label);
       button.addEventListener('click', () => {
         stopAutoplay();
-        updateSlide(index);
+        updateSlide(slideNumber);
       });
       fragment.appendChild(button);
+    });
+    thumbnails.replaceChildren(fragment);
+  }
+
+  async function loadManifest() {
+    try {
+      const response = await fetch(MANIFEST_PATH, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Manifest request failed: ${response.status}`);
+      const manifest = await response.json();
+      if (!Array.isArray(manifest.slides) || !manifest.slides.length) throw new Error('Manifest has no slides.');
+      slideFiles = manifest.slides.filter(file => typeof file === 'string' && /^[a-zA-Z0-9_-]+\.(?:webp|png|jpe?g)$/i.test(file));
+      if (!slideFiles.length) throw new Error('Manifest has no valid image files.');
+      renderThumbnails();
+      updateSlide(1);
+    } catch (error) {
+      console.error('Unable to load presentation manifest:', error);
+      stopAutoplay();
+      slideCounter.textContent = 'تعذر تحميل قائمة الشرائح';
+      loadingIndicator.textContent = 'تعذر تحميل العرض التعليمي.';
+      loadingIndicator.classList.add('visible');
+      fullscreenButton.disabled = true;
+      autoplayButton.disabled = true;
+      stopButton.disabled = true;
     }
-    thumbnails.appendChild(fragment);
   }
 
   previousButtons.forEach(button => button.addEventListener('click', () => { stopAutoplay(); goPrevious(); }));
@@ -115,8 +185,9 @@
   });
 
   document.addEventListener('keydown', event => {
-    const tag = document.activeElement && document.activeElement.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    const active = document.activeElement;
+    const tag = active && active.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || tag === 'BUTTON' || active?.isContentEditable) return;
     if (event.key === 'ArrowLeft' || event.key === 'PageDown' || event.key === ' ') {
       event.preventDefault();
       stopAutoplay();
@@ -134,18 +205,26 @@
   });
 
   stage.addEventListener('touchstart', event => {
+    if (event.touches.length !== 1) {
+      touchStartX = null;
+      return;
+    }
     touchStartX = event.changedTouches[0].clientX;
-  }, {passive: true});
+  }, { passive: true });
   stage.addEventListener('touchend', event => {
-    if (touchStartX === null) return;
+    if (touchStartX === null || event.changedTouches.length !== 1) return;
     const distance = event.changedTouches[0].clientX - touchStartX;
     touchStartX = null;
     if (Math.abs(distance) < 45) return;
     stopAutoplay();
     if (distance < 0) goNext();
     else goPrevious();
-  }, {passive: true});
+  }, { passive: true });
 
-  renderThumbnails();
-  updateSlide(1);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopAutoplay();
+  });
+  window.addEventListener('pagehide', stopAutoplay, { once: true });
+
+  loadManifest();
 })();

@@ -20,7 +20,7 @@
   <main class="presentation-shell">
     <section class="viewer-card" aria-label="عارض الشرائح">
       <div class="viewer-toolbar">
-        <div class="slide-counter" id="slideCounter" aria-live="polite">الشريحة 1 من 11</div>
+        <div class="slide-counter" id="slideCounter" aria-live="polite">جارٍ تجهيز العرض…</div>
         <div class="toolbar-actions">
           <button class="control-button" id="fullscreenButton" type="button" title="ملء الشاشة">ملء الشاشة</button>
           <button class="control-button" id="autoplayButton" type="button" title="تشغيل العرض تلقائيًا">تشغيل تلقائي</button>
@@ -30,12 +30,12 @@
 
       <div class="stage" id="stage" tabindex="0" aria-label="منطقة عرض الشريحة">
         <button class="stage-arrow previous" id="previousButton" type="button" aria-label="الشريحة السابقة">‹</button>
-        <img id="slideImage" class="slide-image" src="slides/01.webp" alt="الشريحة 1 من العرض التعليمي" fetchpriority="high">
+        <img id="slideImage" class="slide-image" src="slides/01.webp" alt="جارٍ تحميل العرض التعليمي" fetchpriority="high">
         <button class="stage-arrow next" id="nextButton" type="button" aria-label="الشريحة التالية">›</button>
         <div class="loading-indicator" id="loadingIndicator" aria-hidden="true">جارٍ تحميل الشريحة…</div>
       </div>
 
-      <div class="progress-track" aria-label="تقدم العرض"><span id="progressBar"></span></div>
+      <div class="progress-track" id="progressTrack" role="progressbar" aria-label="تقدم العرض" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" aria-valuetext="جارٍ تجهيز العرض"><span id="progressBar"></span></div>
 
       <div class="navigation-row">
         <button class="nav-button" id="previousButtonBottom" type="button">السابق</button>
