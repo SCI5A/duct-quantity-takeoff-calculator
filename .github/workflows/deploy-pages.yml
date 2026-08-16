@@ -40,6 +40,7 @@ jobs:
           node --check tests/sprint-4-fittings-tests.js
           node --check tests/sprint-4-1-fittings-audit-tests.js
           node --check tests/sprint-4-2-fitting-rules-tests.js
+          node --check tests/sprint-4-3-fitting-source-audit-tests.js
           node --check tests/quality-gates.js
       - name: Run engineering test suite
         run: |
@@ -52,6 +53,7 @@ jobs:
           node tests/sprint-4-fittings-tests.js
           node tests/sprint-4-1-fittings-audit-tests.js
           node tests/sprint-4-2-fitting-rules-tests.js
+          node tests/sprint-4-3-fitting-source-audit-tests.js
       - name: Run static quality gates
         run: node tests/quality-gates.js
       - name: Check whitespace errors
