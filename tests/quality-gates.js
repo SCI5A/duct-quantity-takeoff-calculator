@@ -19,6 +19,7 @@ const required = [
   'presentation/slides/manifest.json',
   '.github/workflows/deploy-pages.yml',
   'tests/engineering-tests.js',
+  'tests/sprint-1-1-engineering-tests.js',
   'docs/calculation-methods.md'
 ];
 required.forEach(rel => assert.ok(exists(rel), `Missing required file: ${rel}`));
@@ -47,6 +48,8 @@ assert.match(app, /URL\.revokeObjectURL/);
 assert.match(app, /localStorage\.setItem\(STORAGE_KEY/);
 assert.match(app, /procurementDuctArea/);
 assert.match(app, /procurementWeight/);
+assert.match(app, /invalidCount/);
+assert.match(app, /بند تالف/);
 assert.match(calculations, /sheetDensity/);
 assert.match(calculations, /insulationThicknessMm/);
 assert.match(presentationIndex, /role="progressbar"/);
@@ -58,6 +61,7 @@ assert.match(presentation, /touches\.length/);
 assert.match(presentation, /catch/);
 assert.match(workflow, /needs:\s*quality/);
 assert.match(workflow, /engineering-tests\.js/);
+assert.match(workflow, /sprint-1-1-engineering-tests\.js/);
 assert.match(workflow, /quality-gates\.js/);
 
 console.log(`Quality gates passed: ${required.length} required files, ${manifest.slides.length} manifest slides, labels, paths, accessibility, tests, and workflow checks.`);

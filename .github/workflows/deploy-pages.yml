@@ -31,9 +31,12 @@ jobs:
           node --check assets/js/app.js
           node --check presentation/presentation.js
           node --check tests/engineering-tests.js
+          node --check tests/sprint-1-1-engineering-tests.js
           node --check tests/quality-gates.js
       - name: Run engineering test suite
-        run: node tests/engineering-tests.js
+        run: |
+          node tests/engineering-tests.js
+          node tests/sprint-1-1-engineering-tests.js
       - name: Run static quality gates
         run: node tests/quality-gates.js
       - name: Check whitespace errors

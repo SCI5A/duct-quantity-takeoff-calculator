@@ -119,7 +119,16 @@
     try {
       const parsed = JSON.parse(raw);
       if (!Array.isArray(parsed)) throw new Error('Stored data is not an array.');
-      const migrated = parsed.map(migrateItem).filter(Boolean);
+      const migrated = [];
+      let invalidCount = 0;
+      parsed.forEach(item => {
+        const migratedItem = migrateItem(item);
+        if (migratedItem) migrated.push(migratedItem);
+        else invalidCount += 1;
+      });
+      if (invalidCount > 0) {
+        showStatus(`تم تجاهل ${invalidCount} بند تالف من البيانات المحفوظة.`, 'error');
+      }
       if (sourceKey !== STORAGE_KEY) {
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated)); } catch { /* Migration remains in memory. */ }
       }
