@@ -31,6 +31,10 @@ function assertAuditCase(item, expectedJoints) {
 const perRun = calculateItem(base(), settings);
 assertAuditCase(perRun, 15);
 assert.equal(perRun.accessoryDetails.flange.net, 78);
+assert.equal(perRun.accessoryDetails.flange.status, ACCESSORY_STATUS.ESTIMATED);
+assert.equal(perRun.accessoryDetails.flange.source, 'UNVERIFIED');
+assert.equal(perRun.accessoryDetails.gasket.status, ACCESSORY_STATUS.ESTIMATED);
+assert.equal(perRun.accessoryDetails.gasket.source, 'UNVERIFIED');
 assert.equal(perRun.accessoryDetails.gasket.net, 78);
 assert.equal(perRun.accessoryDetails.cleats.net, 520);
 assert.equal(perRun.accessoryDetails.bolts.net, 520);
@@ -50,9 +54,9 @@ assert.equal(manual.accessoryDetails.cleats.net, 590);
 assert.equal(manual.accessoryDetails.bolts.net, 590);
 
 const cases = [
-  ['TDF', base({ jointType: 'TDF' }), { gasket: ACCESSORY_STATUS.CALCULATED, corners: ACCESSORY_STATUS.ESTIMATED }],
-  ['TDC', base({ jointType: 'TDC' }), { gasket: ACCESSORY_STATUS.CALCULATED, corners: ACCESSORY_STATUS.ESTIMATED }],
-  ['ANGLE_FLANGE', base({ jointType: 'ANGLE_FLANGE' }), { gasket: ACCESSORY_STATUS.CALCULATED, corners: ACCESSORY_STATUS.INPUT_REQUIRED }],
+  ['TDF', base({ jointType: 'TDF' }), { flange: ACCESSORY_STATUS.ESTIMATED, gasket: ACCESSORY_STATUS.ESTIMATED, corners: ACCESSORY_STATUS.ESTIMATED }],
+  ['TDC', base({ jointType: 'TDC' }), { flange: ACCESSORY_STATUS.ESTIMATED, gasket: ACCESSORY_STATUS.ESTIMATED, corners: ACCESSORY_STATUS.ESTIMATED }],
+  ['ANGLE_FLANGE', base({ jointType: 'ANGLE_FLANGE' }), { flange: ACCESSORY_STATUS.ESTIMATED, gasket: ACCESSORY_STATUS.ESTIMATED, corners: ACCESSORY_STATUS.INPUT_REQUIRED }],
   ['CUSTOM', base({ jointType: 'CUSTOM' }), { flange: ACCESSORY_STATUS.INPUT_REQUIRED, gasket: ACCESSORY_STATUS.INPUT_REQUIRED, cleats: ACCESSORY_STATUS.INPUT_REQUIRED, silicone: ACCESSORY_STATUS.INPUT_REQUIRED, bolts: ACCESSORY_STATUS.INPUT_REQUIRED }]
 ];
 for (const [name, input, expected] of cases) {

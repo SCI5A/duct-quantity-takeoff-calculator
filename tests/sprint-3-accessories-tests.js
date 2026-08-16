@@ -45,7 +45,7 @@ assert.equal(perRun.accessoryDetails.gasket.procurement, 78);
 assert.equal(perRun.accessoryDetails.bolts.net, 520);
 assert.equal(perRun.accessoryDetails.nuts.status, ACCESSORY_STATUS.INPUT_REQUIRED);
 assert.equal(perRun.accessoryDetails.washers.status, ACCESSORY_STATUS.INPUT_REQUIRED);
-assert.equal(perRun.accessoryDetails.flange.status, ACCESSORY_STATUS.CALCULATED);
+assert.equal(perRun.accessoryDetails.gasket.status, ACCESSORY_STATUS.ESTIMATED);
 assert.equal(perRun.accessoryDetails.corners.status, ACCESSORY_STATUS.ESTIMATED);
 assert.equal(perRun.accessoryDetails.cleats.status, ACCESSORY_STATUS.ESTIMATED);
 assert.equal(perRun.accessoryDetails.silicone.status, ACCESSORY_STATUS.ESTIMATED);

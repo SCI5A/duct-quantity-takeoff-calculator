@@ -305,7 +305,9 @@
         formulaRow(`${label} — Net`, line.formula, `${format(line.net, line.unit === 'pcs' || line.unit === 'sets')} ${line.unit}`, line.status),
         formulaRow(`${label} — Waste`, 'Accessory-specific waste allowance', `${format(line.waste, line.unit === 'pcs' || line.unit === 'sets')} ${line.unit}`, line.status),
         formulaRow(`${label} — Procurement`, 'Net + Accessory Waste', `${format(line.procurement, line.unit === 'pcs' || line.unit === 'sets')} ${line.unit}`, line.status),
-        formulaRow(`${label} — Inputs / Basis`, line.inputs || '—', line.basis || line.reason || '—', line.status)
+        formulaRow(`${label} — Inputs`, line.inputs || '—', line.inputs || '—', line.status),
+        formulaRow(`${label} — Engineering Basis`, line.basis || line.reason || '—', line.basis || line.reason || '—', line.status),
+        formulaRow(`${label} — Source`, line.source || 'UNVERIFIED', line.source || 'UNVERIFIED', line.status)
       ];
     });
   }
@@ -320,7 +322,7 @@
         const line = item.accessoryDetails && item.accessoryDetails[key];
         if (!line) return;
         const row = document.createElement('tr');
-        [index + 1, label, format(line.net, line.unit === 'pcs' || line.unit === 'sets'), format(line.waste, line.unit === 'pcs' || line.unit === 'sets'), format(line.procurement, line.unit === 'pcs' || line.unit === 'sets'), line.unit, line.status].forEach(value => appendCell(row, value));
+        [index + 1, label, format(line.net, line.unit === 'pcs' || line.unit === 'sets'), format(line.waste, line.unit === 'pcs' || line.unit === 'sets'), format(line.procurement, line.unit === 'pcs' || line.unit === 'sets'), line.unit, line.status, line.source || 'UNVERIFIED'].forEach(value => appendCell(row, value));
         rows.appendChild(row);
       });
     });

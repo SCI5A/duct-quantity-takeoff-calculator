@@ -23,6 +23,7 @@ const required = [
   'tests/sprint-2-joint-tests.js',
   'tests/sprint-3-accessories-tests.js',
   'tests/sprint-3-1-accessory-audit-tests.js',
+  'tests/sprint-3-2-connection-rules-tests.js',
   'docs/calculation-methods.md'
 ];
 required.forEach(rel => assert.ok(exists(rel), `Missing required file: ${rel}`));
@@ -72,6 +73,9 @@ assert.match(calculations, /accessoryLine/);
 assert.match(calculations, /accessoryNet/);
 assert.match(calculations, /accessoryWaste/);
 assert.match(calculations, /accessoryProcurement/);
+assert.match(calculations, /CONNECTION_RULES/);
+assert.match(calculations, /CONNECTION_RULE_SOURCES/);
+assert.match(calculations, /connectionRule/);
 assert.match(calculations, /washers/);
 assert.match(presentationIndex, /role="progressbar"/);
 assert.match(presentation, /manifest\.json/);
@@ -86,6 +90,7 @@ assert.match(workflow, /sprint-1-1-engineering-tests\.js/);
 assert.match(workflow, /sprint-2-joint-tests\.js/);
 assert.match(workflow, /sprint-3-accessories-tests\.js/);
 assert.match(workflow, /sprint-3-1-accessory-audit-tests\.js/);
+assert.match(workflow, /sprint-3-2-connection-rules-tests\.js/);
 assert.match(workflow, /quality-gates\.js/);
 
 console.log(`Quality gates passed: ${required.length} required files, ${manifest.slides.length} manifest slides, labels, paths, accessibility, tests, and workflow checks.`);
