@@ -25,6 +25,7 @@ const required = [
   'tests/sprint-3-1-accessory-audit-tests.js',
   'tests/sprint-4-fittings-tests.js',
   'tests/sprint-4-1-fittings-audit-tests.js',
+  'tests/sprint-4-2-fitting-rules-tests.js',
   'docs/calculation-methods.md'
 ];
 required.forEach(rel => assert.ok(exists(rel), `Missing required file: ${rel}`));
@@ -98,6 +99,7 @@ assert.match(workflow, /sprint-3-1-accessory-audit-tests\.js/);
 assert.match(workflow, /sprint-3-2-connection-rules-tests\.js/);
 assert.match(workflow, /sprint-4-fittings-tests\.js/);
   assert.match(workflow, /sprint-4-1-fittings-audit-tests\.js/);
+assert.match(workflow, /sprint-4-2-fitting-rules-tests\.js/);
 assert.match(workflow, /fittings\.js/);
 assert.match(workflow, /quality-gates\.js/);
 

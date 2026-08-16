@@ -412,6 +412,8 @@
       content.append(
         formulaRow('Fitting Type', item.fittingType, `${dimensions} × ${item.quantity}`, item.status),
         formulaRow('Fitting Formula', item.formula, `${format(item.netArea)} m²`, item.status),
+        formulaRow('Geometry Rule ID', item.ruleId || '—', item.ruleId || '—', item.geometryRuleStatus || item.status),
+        formulaRow('Required Inputs', (item.requiredInputs || []).join('; '), (item.requiredInputs || []).join('; ') || '—', item.geometryRuleStatus || item.status),
         formulaRow('Net Area', item.formula, `${format(item.netArea)} m²`, item.status),
         formulaRow('Waste Area', `Net × ${item.fittingWasteRate}%`, `${format(item.wasteArea)} m²`, item.fittingWasteRate ? 'ESTIMATING ALLOWANCE' : 'NO WASTE RATE ASSUMED'),
         formulaRow('Procurement Area', 'Net + Waste', `${format(item.procurementArea)} m²`, 'PROCUREMENT'),
@@ -423,6 +425,7 @@
         formulaRow('Inputs', item.inputs, item.inputs, item.status),
         formulaRow('Engineering Basis', item.basis, item.basis, item.status),
         formulaRow('Source', item.source, item.source, item.status),
+        formulaRow('Geometry Limitations', item.limitations || '—', item.limitations || '—', item.geometryRuleStatus || item.status),
         ...accessoryFormulaRows(item)
       );
       viewer.hidden = false; viewer.scrollIntoView({ behavior: 'smooth', block: 'start' }); return;
