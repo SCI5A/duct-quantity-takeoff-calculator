@@ -28,6 +28,7 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check assets/js/calculations.js
+          node --check assets/js/fittings.js
           node --check assets/js/app.js
           node --check presentation/presentation.js
           node --check tests/engineering-tests.js
@@ -36,6 +37,7 @@ jobs:
           node --check tests/sprint-3-accessories-tests.js
           node --check tests/sprint-3-1-accessory-audit-tests.js
           node --check tests/sprint-3-2-connection-rules-tests.js
+          node --check tests/sprint-4-fittings-tests.js
           node --check tests/quality-gates.js
       - name: Run engineering test suite
         run: |
@@ -45,6 +47,7 @@ jobs:
           node tests/sprint-3-accessories-tests.js
           node tests/sprint-3-1-accessory-audit-tests.js
           node tests/sprint-3-2-connection-rules-tests.js
+          node tests/sprint-4-fittings-tests.js
       - name: Run static quality gates
         run: node tests/quality-gates.js
       - name: Check whitespace errors

@@ -62,6 +62,32 @@
     <p class="note">في PER RUN يُحسب التصنيع لكل مسار مستقل، وفي GLOBAL من إجمالي الطول، وفي MANUAL يُحترم العدد اليدوي. نوع الوصلة مطلوب، وتباعد البراغي اختياري ويظهر كـ INPUT REQUIRED عند غيابه.</p>
   </section>
 
+  <section class="card" aria-labelledby="fittingTitle">
+    <h2 id="fittingTitle">إضافة Fitting</h2>
+    <div class="grid">
+      <div><label for="fittingType">نوع الـFitting</label><select id="fittingType"><option value="">اختر النوع</option><option value="ELBOW">Elbow</option><option value="TEE">Tee</option><option value="REDUCER">Reducer</option><option value="TRANSITION">Transition</option><option value="OFFSET">Offset</option><option value="END_CAP">End Cap</option><option value="CUSTOM_FITTING">Custom Fitting</option></select></div>
+      <div><label for="fittingDuctType">نوع الدكت</label><select id="fittingDuctType"><option value="RECTANGULAR">مستطيل</option><option value="ROUND">دائري</option></select></div>
+      <div><label for="fittingW">العرض W mm</label><input id="fittingW" type="number" min=".01" step=".01" inputmode="decimal"></div>
+      <div><label for="fittingH">الارتفاع H mm</label><input id="fittingH" type="number" min=".01" step=".01" inputmode="decimal"></div>
+      <div><label for="fittingD">القطر D mm</label><input id="fittingD" type="number" min=".01" step=".01" inputmode="decimal" disabled></div>
+      <div><label for="fittingL">طول المسار L m</label><input id="fittingL" type="number" min=".01" step=".01" inputmode="decimal"></div>
+      <div><label for="fittingQty">العدد</label><input id="fittingQty" type="number" min="1" step="1" value="1" inputmode="numeric"></div>
+      <div><label for="fittingTh">سماكة الصاج mm</label><input id="fittingTh" type="number" min=".01" step=".1" value=".8" inputmode="decimal"></div>
+      <div><label for="fittingRadius">Elbow Radius mm</label><input id="fittingRadius" type="number" min=".01" step=".1" inputmode="decimal"></div>
+      <div><label for="fittingAngle">Elbow Angle °</label><input id="fittingAngle" type="number" min=".01" max="360" step=".1" inputmode="decimal"></div>
+      <div><label for="fittingArea">Fabrication Area m²</label><input id="fittingArea" type="number" min=".01" step=".01" inputmode="decimal"></div>
+      <div><label for="fittingWaste">Fitting Waste %</label><input id="fittingWaste" type="number" min="0" step=".1" value="0" inputmode="decimal"></div>
+      <div><label for="fittingJointBasis">أساس الوصلات</label><select id="fittingJointBasis"><option value="PER_RUN">PER RUN</option><option value="GLOBAL">GLOBAL</option><option value="MANUAL">MANUAL</option></select></div>
+      <div><label for="fittingJointType">نوع الوصلة</label><select id="fittingJointType"><option value="">اختر نوع الوصلة</option><option value="TDF">TDF</option><option value="TDC">TDC</option><option value="ANGLE_FLANGE">Angle Flange</option><option value="SLIP_JOINT">Slip Joint</option><option value="CUSTOM">Custom</option></select></div>
+      <div><label for="fittingFabrication">Fabrication Length m</label><input id="fittingFabrication" type="number" min=".01" step=".01" inputmode="decimal"></div>
+      <div><label for="fittingManualJoints">Manual Joint Count</label><input id="fittingManualJoints" type="number" min="1" step="1" inputmode="numeric"></div>
+      <div><label for="fittingPressure">Pressure Class</label><select id="fittingPressure"><option value="">غير محدد</option><option value="medium">Medium</option></select></div>
+      <div><label for="fittingMaterial">مادة الصاج</label><select id="fittingMaterial"><option value="galvanized">Galvanized steel — 7850 kg/m³</option><option value="aluminum">Aluminum — 2700 kg/m³</option><option value="stainless">Stainless steel — 8000 kg/m³</option></select></div>
+    </div>
+    <div class="actions"><button class="primary" id="addFittingButton" type="button">إضافة Fitting</button><button class="secondary" id="clearFittingButton" type="button">مسح Fitting</button></div>
+    <p class="note">لا تُستخدم معادلة الدكت المستقيم للـFittings غير الموثقة. عند غياب هندسة أو قاعدة تصنيع، تظهر النتيجة INPUT_REQUIRED بدل التخمين.</p>
+  </section>
+
   <section class="card" aria-labelledby="summaryTitle">
     <h2 id="summaryTitle">الإجماليات</h2>
     <div class="summary" id="summary"></div>
@@ -108,6 +134,7 @@
 <footer>Duct Quantity &amp; Accessories Calculator — GitHub Pages</footer>
 <noscript><p class="noscript">يحتاج التطبيق إلى JavaScript ليعمل.</p></noscript>
 <script src="assets/js/calculations.js"></script>
+<script src="assets/js/fittings.js"></script>
 <script src="assets/js/app.js"></script>
 </body>
 </html>

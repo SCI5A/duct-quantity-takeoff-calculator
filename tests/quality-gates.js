@@ -10,9 +10,9 @@ const exists = rel => fs.existsSync(path.join(root, rel));
 
 const required = [
   'index.html',
-  'assets/css/style.css',
-  'assets/js/app.js',
   'assets/js/calculations.js',
+  'assets/js/fittings.js',
+  'assets/js/app.js',
   'presentation/index.html',
   'presentation/presentation.css',
   'presentation/presentation.js',
@@ -74,6 +74,10 @@ assert.match(calculations, /accessoryNet/);
 assert.match(calculations, /accessoryWaste/);
 assert.match(calculations, /accessoryProcurement/);
 assert.match(calculations, /CONNECTION_RULES/);
+const fittings = read('assets/js/fittings.js');
+assert.match(fittings, /FITTING_TYPES/);
+assert.match(fittings, /calculateFitting/);
+assert.match(fittings, /INPUT_REQUIRED/);
 assert.match(calculations, /CONNECTION_RULE_SOURCES/);
 assert.match(calculations, /connectionRule/);
 assert.match(calculations, /washers/);
@@ -91,6 +95,8 @@ assert.match(workflow, /sprint-2-joint-tests\.js/);
 assert.match(workflow, /sprint-3-accessories-tests\.js/);
 assert.match(workflow, /sprint-3-1-accessory-audit-tests\.js/);
 assert.match(workflow, /sprint-3-2-connection-rules-tests\.js/);
+assert.match(workflow, /sprint-4-fittings-tests\.js/);
+assert.match(workflow, /fittings\.js/);
 assert.match(workflow, /quality-gates\.js/);
 
 console.log(`Quality gates passed: ${required.length} required files, ${manifest.slides.length} manifest slides, labels, paths, accessibility, tests, and workflow checks.`);
