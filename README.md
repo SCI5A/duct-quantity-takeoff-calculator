@@ -46,3 +46,13 @@ https://sci5a.github.io/duct-quantity-takeoff-calculator/
 ```
 
 يتم النشر من الفرع `main` عبر GitHub Actions. Sprints الخاصة بمحرك الوصلات المتقدم، الملحقات المتقدم، الفittings، التدعيم وفئة الضغط، وBOQ الاحترافي والتكلفة **مؤجلة عمدًا** حتى اعتماد Sprint 1.
+
+## Engineering Status
+
+الحالة الرسمية: **Production-ready as an engineering calculation / takeoff software framework, with explicitly declared engineering limitations — not yet a universally validated final fabrication standard.**
+
+- **Sprint 4.3:** CLOSED: PASS WITH ENGINEERING LIMITATIONS.
+- **Sprint 5:** NOT STARTED.
+- قواعد Fittings غير الموثقة تبقى `ESTIMATED` أو `INPUT_REQUIRED` ولا تتحول إلى `CALCULATED` دون مصدر هندسي قابل للتتبع.
+
+للتفاصيل الكاملة، راجع [`docs/ENGINEERING-STATUS.md`](docs/ENGINEERING-STATUS.md).
