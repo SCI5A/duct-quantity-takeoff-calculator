@@ -58,10 +58,38 @@ footer{text-align:center;color:#6d7a88;font-size:12px;padding:20px}
   .actions,footer,.presentation-entry,.status{display:none!important}
   body{background:#fff;padding-top:18mm}
   .card{box-shadow:none}
-  .site-header{min-height:18mm;padding:0;text-align:right;justify-content:flex-end;color:#182230;background:#fff;border-bottom:1px solid #d9e1e8}
-  .header-copy{max-width:calc(100% - 45mm)}
-  .brand-logo{position:fixed;top:5mm;left:8mm;width:30mm;height:auto;max-height:20mm;object-fit:contain;z-index:10}
-  .site-header h1{font-size:16px;margin:0 0 2px}
-  .site-header p{font-size:10px;color:#617286}
+  .site-header{
+    min-height:26mm;
+    padding:3mm 8mm;
+    display:flex;
+    flex-direction:row;
+    align-items:center;
+    justify-content:flex-start;
+    gap:8mm;
+    direction:ltr;
+    text-align:left;
+    color:#182230;
+    background:#fff;
+    border-bottom:1px solid #d9e1e8;
+  }
+  .brand-logo{
+    position:static;
+    flex:0 0 30mm;
+    width:30mm;
+    height:20mm;
+    max-height:20mm;
+    object-fit:contain;
+    object-position:center;
+    display:block;
+  }
+  .header-copy{
+    flex:1 1 auto;
+    min-width:0;
+    max-width:none;
+    direction:rtl;
+    text-align:right;
+  }
+  .site-header h1{font-size:16px;margin:0 0 2px;line-height:1.25;overflow-wrap:anywhere}
+  .site-header p{font-size:10px;color:#617286;margin:0;line-height:1.25;overflow-wrap:anywhere}
 }
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition-duration:0.01ms!important}}
