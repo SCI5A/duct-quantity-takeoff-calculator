@@ -1,6 +1,9 @@
 *{box-sizing:border-box}
 body{margin:0;background:#f4f7fb;color:#182230;font-family:Arial,Tahoma,sans-serif}
 header{background:#12355b;color:#fff;text-align:center;padding:22px 14px}
+.site-header{position:relative;min-height:112px;display:flex;align-items:center;justify-content:center}
+.header-copy{max-width:calc(100% - 180px)}
+.brand-logo{position:absolute;top:12px;left:14px;width:130px;height:auto;max-height:88px;object-fit:contain;object-position:left center;display:block}
 header h1{margin:0 0 7px;font-size:26px}
 header p{margin:0;opacity:.85}
 main{max-width:1400px;margin:20px auto;padding:0 14px}
@@ -41,6 +44,24 @@ footer{text-align:center;color:#6d7a88;font-size:12px;padding:20px}
 .formula-item span{font-weight:700;color:#1677c8}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .noscript{max-width:900px;margin:20px auto;padding:14px;background:#fff0f0;color:#a12626;border-radius:10px}
-@media(max-width:600px){header h1{font-size:21px}.card{padding:13px}.metric strong{font-size:17px}.section-heading{align-items:flex-start}.formula-grid{grid-template-columns:1fr}}
-@media print{.actions,footer,.presentation-entry,.status{display:none!important}body{background:#fff}.card{box-shadow:none}.formula-card[hidden]{display:none}}
+@media(max-width:600px){
+  .site-header{min-height:92px;padding:16px 10px}
+  .header-copy{max-width:calc(100% - 125px)}
+  .brand-logo{top:10px;left:10px;width:96px;max-height:70px}
+  header h1{font-size:21px}
+  .card{padding:13px}
+  .metric strong{font-size:17px}
+  .section-heading{align-items:flex-start}
+  .formula-grid{grid-template-columns:1fr}
+}
+@media print{
+  .actions,footer,.presentation-entry,.status{display:none!important}
+  body{background:#fff;padding-top:18mm}
+  .card{box-shadow:none}
+  .site-header{min-height:18mm;padding:0;text-align:right;justify-content:flex-end;color:#182230;background:#fff;border-bottom:1px solid #d9e1e8}
+  .header-copy{max-width:calc(100% - 45mm)}
+  .brand-logo{position:fixed;top:5mm;left:8mm;width:30mm;height:auto;max-height:20mm;object-fit:contain;z-index:10}
+  .site-header h1{font-size:16px;margin:0 0 2px}
+  .site-header p{font-size:10px;color:#617286}
+}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition-duration:0.01ms!important}}
