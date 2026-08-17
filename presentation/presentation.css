@@ -2,11 +2,20 @@
 body{margin:0;background:#f4f7fb;color:#182230;font-family:Arial,Tahoma,sans-serif}
 button,a{font:inherit}
 .presentation-header{background:#12355b;color:#fff;padding:24px 20px;display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.presentation-brand{display:flex;align-items:center;gap:10px;direction:ltr;min-width:180px;font-size:11px;font-weight:700;line-height:1.35;letter-spacing:.04em}
+.presentation-brand img{display:block;width:74px;height:52px;object-fit:contain}
+.presentation-brand span{direction:ltr;color:#fff}
+.presentation-brand small{font-size:10px;color:#b9d9f3;letter-spacing:0}
 .header-copy{max-width:900px}
 .eyebrow{margin:0 0 8px;color:#b9d9f3;font-size:12px;font-weight:700;letter-spacing:.08em}
 h1{margin:0 0 8px;font-size:28px}
 .header-copy>p:last-child{margin:0;color:#e7f2fb}
 .back-button{display:inline-flex;align-items:center;justify-content:center;padding:11px 16px;border-radius:9px;background:#e8eef5;color:#18344f;text-decoration:none;font-weight:700;white-space:nowrap}
+.engineering-status-banner{width:min(1320px,100%);margin:14px auto 0;padding:14px 20px;background:#fff;border:1px solid #d9e4ef;border-radius:10px;color:#18344f;display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;line-height:1.5}
+.engineering-status-banner h2{margin:0 0 4px;color:#12355b;font-size:17px;letter-spacing:.05em}
+.engineering-status-banner p{margin:2px 0;font-size:13px}
+.engineering-status-banner strong{color:#1677c8}
+.engineering-status-banner .pending{color:#a66b00}
 .presentation-shell{width:min(1320px,100%);margin:20px auto;padding:0 14px}
 .viewer-card,.thumbnail-section{background:#fff;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 4px 18px #0000000d}
 .viewer-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
@@ -42,6 +51,6 @@ h1{margin:0 0 8px;font-size:28px}
 .thumbnail img{display:block;width:100%;height:auto;aspect-ratio:16 / 9;object-fit:cover;border-radius:6px;background:#102b4b}
 .thumbnail-label{display:block;font-size:12px;font-weight:700;margin-top:6px;padding:0 3px 3px}
 .presentation-footer{text-align:center;color:#6d7a88;font-size:12px;padding:20px}
-@media(max-width:700px){.presentation-header{padding:18px 14px}.presentation-header h1{font-size:22px}.header-copy>p:last-child{font-size:13px}.back-button{width:100%}.presentation-shell{margin-top:12px;padding:0 8px}.viewer-card,.thumbnail-section{padding:12px;border-radius:10px}.stage{min-height:220px}.stage-arrow{width:36px;height:44px;font-size:31px}.stage-arrow.previous{right:8px}.stage-arrow.next{left:8px}.navigation-row{gap:8px}.nav-button{min-width:78px;padding:9px 10px}.keyboard-hint{font-size:10px;flex:1}.thumbnails{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.thumbnail{padding:4px}.thumbnail-label{font-size:11px}}
+@media(max-width:700px){.presentation-header{padding:18px 14px}.presentation-brand{width:100%;justify-content:flex-start}.presentation-brand img{width:64px;height:46px}.presentation-header h1{font-size:22px}.header-copy>p:last-child{font-size:13px}.back-button{width:100%}.engineering-status-banner{margin:10px 8px 0;padding:12px 14px;display:block}.engineering-status-banner p{font-size:12px}.presentation-shell{margin-top:12px;padding:0 8px}.viewer-card,.thumbnail-section{padding:12px;border-radius:10px}.stage{min-height:220px}.stage-arrow{width:36px;height:44px;font-size:31px}.stage-arrow.previous{right:8px}.stage-arrow.next{left:8px}.navigation-row{gap:8px}.nav-button{min-width:78px;padding:9px 10px}.keyboard-hint{font-size:10px;flex:1}.thumbnails{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.thumbnail{padding:4px}.thumbnail-label{font-size:11px}}
 @media(min-width:701px) and (max-width:950px){.stage{min-height:320px}.thumbnails{grid-template-columns:repeat(4,minmax(0,1fr))}}
 @media(prefers-reduced-motion:reduce){.progress-track span{transition:none}}
