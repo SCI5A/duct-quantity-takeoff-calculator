@@ -9,6 +9,7 @@
   const numberFormat = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const integerFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
   let items = [];
+  let pendingReview = null;
 
   function format(value, integer = false) {
     return (integer ? integerFormat : numberFormat).format(Number(value) || 0);
@@ -23,6 +24,87 @@
     status.hidden = !message;
     status.className = `status ${kind}`;
     status.textContent = message || '';
+  }
+
+  function showInputError(id, message) {
+    const error = $(id);
+    if (!error) return;
+    error.hidden = !message;
+    error.textContent = message || '';
+  }
+
+  function statusExplanation(status) {
+    const explanations = {
+      CALCULATED: 'نتيجة محسوبة وفق القاعدة والمدخلات الحالية.',
+      ESTIMATED: 'نموذج تقديري هندسي — ليس معيار تصنيع نهائيًا.',
+      INPUT_REQUIRED: 'يلزم إدخال أو أساس هندسي إضافي.',
+      UNVERIFIED: 'لم يتم اعتماد مصدر هندسي قابل للتتبع لهذه القاعدة.',
+      LEGACY_ESTIMATE: 'تقدير محفوظ من سجل قديم للتوافق، وليس اعتمادًا جديدًا.'
+    };
+    return explanations[status] || '';
+  }
+
+  function itemStatus(item) {
+    if (item.itemKind === 'FITTING') return item.status || item.fittingStatus || '—';
+    return item.status || '—';
+  }
+
+  function itemSearchText(item) {
+    const isFitting = item.itemKind === 'FITTING';
+    const size = isFitting ? (item.ductType === 'RECTANGULAR' ? `${item.dimensions.widthMm} ${item.dimensions.heightMm}` : `${item.dimensions.diameterMm}`) : (item.type === 'rect' ? `${item.widthMm} ${item.heightMm}` : `${item.diameterMm}`);
+    return [isFitting ? 'Fitting' : 'Duct', item.fittingType, item.type, item.jointType, item.jointBasis, item.jointCountSource, item.source, item.basis, size].filter(Boolean).join(' ').toLowerCase();
+  }
+
+  function itemMatchesFilters(item) {
+    const search = ($('boqSearch')?.value || '').trim().toLowerCase();
+    const itemType = $('boqItemType')?.value || 'ALL';
+    const status = $('boqStatus')?.value || 'ALL';
+    const jointBasis = $('boqJointBasis')?.value || 'ALL';
+    const jointType = $('boqJointType')?.value || 'ALL';
+    const isFitting = item.itemKind === 'FITTING';
+    if (search && !itemSearchText(item).includes(search)) return false;
+    if (itemType === 'DUCT' && isFitting) return false;
+    if (itemType === 'FITTING' && !isFitting) return false;
+    if (itemType === 'ACCESSORY' && !Object.keys(item.accessoryDetails || {}).length) return false;
+    if (status !== 'ALL' && itemStatus(item) !== status && !Object.values(item.accessoryDetails || {}).some(line => line.status === status)) return false;
+    if (jointBasis !== 'ALL' && (item.jointBasis || item.jointCountMode) !== jointBasis) return false;
+    if (jointType !== 'ALL' && item.jointType !== jointType) return false;
+    return true;
+  }
+
+  function formatReviewValue(value) { return value === null || value === undefined || value === '' ? '—' : String(value); }
+
+  function openReview(item, kind) {
+    pendingReview = { item, kind };
+    const details = $('reviewDetails');
+    if (!details) return;
+    const isFitting = kind === 'FITTING';
+    const size = isFitting ? (item.ductType === 'RECTANGULAR' ? `${item.dimensions.widthMm} × ${item.dimensions.heightMm} mm` : `Ø ${item.dimensions.diameterMm} mm`) : (item.type === 'rect' ? `${item.widthMm} × ${item.heightMm} mm` : `Ø ${item.diameterMm} mm`);
+    const rows = [
+      ['Type', isFitting ? `Fitting — ${item.fittingType}` : (item.type === 'rect' ? 'Rectangular Duct' : 'Round Duct')],
+      ['Dimensions', size], ['Length', `${formatReviewValue(isFitting ? item.totalLengthM : item.lengthM)} m`], ['Quantity', item.quantity],
+      ['Material', item.sheetMaterial], ['Thickness', `${formatReviewValue(item.sheetThicknessMm || item.thicknessMm)} mm`],
+      ['Insulation', isFitting ? '—' : `${formatReviewValue(item.insulationThicknessMm)} mm`], ['Joint Basis', item.jointBasis || item.jointCountMode],
+      ['Joint Type', item.jointType], ['Manual Joint Count', item.manualJointCount], ['Fabrication Length', item.fabricationLengthM],
+      ['Pressure Class', item.pressureClass], ['Status', itemStatus(item) === '—' ? 'See accessory-level statuses' : itemStatus(item)], ['Source', item.source || item.jointCountSource], ['Basis', item.basis || item.jointCountSource]
+    ];
+    details.replaceChildren();
+    rows.forEach(([label, value]) => { const dt = document.createElement('dt'); dt.textContent = label; const dd = document.createElement('dd'); dd.textContent = formatReviewValue(value); details.append(dt, dd); });
+    $('reviewDialog').hidden = false;
+    $('confirmReview').focus();
+  }
+
+  function closeReview() { pendingReview = null; if ($('reviewDialog')) $('reviewDialog').hidden = true; }
+
+  function confirmReview() {
+    if (!pendingReview) return;
+    const { item, kind } = pendingReview;
+    const previous = items;
+    items = [...items, item];
+    if (!save()) { items = previous; return; }
+    closeReview(); render();
+    if (kind === 'FITTING') { clearFittingForm(); showStatus(`تمت إضافة Fitting ${item.fittingType}. Status: ${item.status}.`, 'success'); }
+    else { clearForm(); showStatus(`تمت إضافة البند. Joint Count: ${item.joints} (${item.jointCountSource}).`, 'success'); }
   }
 
   function readValue(id, label) {
@@ -135,17 +217,9 @@
   }
 
   function addFitting() {
-    try {
-      const item = fittings.calculateFitting(fittingFormInput());
-      const previous = items;
-      items = [...items, item];
-      if (!save()) { items = previous; return; }
-      render();
-      clearFittingForm();
-      showStatus(`تمت إضافة Fitting ${item.fittingType}. Status: ${item.status}.`, 'success');
-    } catch (error) {
-      showStatus(error.message, 'error');
-    }
+    showInputError('fittingInputError', '');
+    try { openReview(fittings.calculateFitting(fittingFormInput()), 'FITTING'); }
+    catch (error) { showInputError('fittingInputError', error.message); showStatus(error.message, 'error'); }
   }
 
   function settingsFromLegacy(item) {
@@ -272,17 +346,9 @@
   }
 
   function addItem() {
-    try {
-      const item = math.calculateItem(formInput(), settingsFromForm());
-      const previous = items;
-      items = [...items, item];
-      if (!save()) { items = previous; return; }
-      render();
-      clearForm();
-      showStatus(`تمت إضافة البند. Joint Count: ${item.joints} (${item.jointCountSource}).`, 'success');
-    } catch (error) {
-      showStatus(error.message, 'error');
-    }
+    showInputError('ductInputError', '');
+    try { openReview(math.calculateItem(formInput(), settingsFromForm()), 'DUCT'); }
+    catch (error) { showInputError('ductInputError', error.message); showStatus(error.message, 'error'); }
   }
 
   function removeItem(index) {
@@ -309,6 +375,8 @@
     const cell = document.createElement('td');
     if (className) cell.className = className;
     cell.textContent = String(value);
+    const match = String(value).match(/\b(CALCULATED|ESTIMATED|INPUT_REQUIRED|UNVERIFIED|LEGACY_ESTIMATE)\b/);
+    if (match) { cell.dataset.status = match[1]; cell.classList.add('status-cell'); cell.title = statusExplanation(match[1]); }
     row.appendChild(cell);
   }
 
@@ -316,6 +384,7 @@
     const rows = $('rows');
     rows.replaceChildren();
     items.forEach((item, index) => {
+      if (!itemMatchesFilters(item)) return;
       const row = document.createElement('tr');
       const isFitting = item.itemKind === 'FITTING';
       const size = isFitting ? (item.ductType === 'RECTANGULAR' ? `${item.dimensions.widthMm} × ${item.dimensions.heightMm} mm` : `Ø ${item.dimensions.diameterMm} mm`) : (item.type === 'rect' ? `${item.widthMm} × ${item.heightMm} mm` : `Ø ${item.diameterMm} mm`);
@@ -331,6 +400,34 @@
       deleteButton.type = 'button'; deleteButton.className = 'danger compact-button'; deleteButton.textContent = 'حذف';
       deleteButton.setAttribute('aria-label', `حذف البند ${index + 1}`); deleteButton.addEventListener('click', () => removeItem(index));
       actionCell.append(formulaButton, deleteButton); row.appendChild(actionCell); rows.appendChild(row);
+    });
+  }
+
+  function renderExecutiveStatus() {
+    const panel = $('executiveStatusPanel');
+    if (!panel) return;
+    const counts = { CALCULATED: 0, ESTIMATED: 0, INPUT_REQUIRED: 0, UNVERIFIED: 0, LEGACY_ESTIMATE: 0 };
+    items.forEach(item => {
+      const statuses = [];
+      if (item.status) statuses.push(item.status);
+      Object.values(item.accessoryDetails || {}).forEach(line => { if (line && line.status) statuses.push(line.status); });
+      statuses.forEach(status => { if (Object.prototype.hasOwnProperty.call(counts, status)) counts[status] += 1; });
+    });
+    const metrics = [
+      ['إجمالي البنود', items.length, 'total'],
+      ['CALCULATED', counts.CALCULATED, 'calculated'],
+      ['ESTIMATED', counts.ESTIMATED, 'estimated'],
+      ['INPUT_REQUIRED', counts.INPUT_REQUIRED, 'input-required'],
+      ['UNVERIFIED', counts.UNVERIFIED, 'unverified'],
+      ['تحتاج مدخلًا/مصدرًا', counts.INPUT_REQUIRED + counts.UNVERIFIED, 'attention']
+    ];
+    panel.replaceChildren();
+    metrics.forEach(([label, value, className]) => {
+      const card = document.createElement('div'); card.className = `executive-metric ${className}`;
+      const title = document.createElement('span'); title.textContent = label;
+      const valueEl = document.createElement('strong'); valueEl.textContent = format(value, true);
+      card.title = statusExplanation(label);
+      card.append(title, valueEl); panel.appendChild(card);
     });
   }
 
@@ -492,13 +589,16 @@
     showStatus('تم إنشاء CSV مع نموذج الوصلات وحالات الملحقات.', 'success');
   }
 
-  function render() { renderRows(); renderSummary(); renderAccessoryDetails(); }
+  function render() {
+    renderRows(); renderExecutiveStatus(); renderSummary(); renderAccessoryDetails();
+    const count = $('boqResultCount'); if (count) count.textContent = `${[...$('rows').children].length} من ${items.length} بند`;
+  }
 
   $('addButton').addEventListener('click', addItem);
   $('clearButton').addEventListener('click', clearForm);
   $('clearAllButton').addEventListener('click', clearAll);
   $('csvButton').addEventListener('click', exportCSV);
-  $('printButton').addEventListener('click', () => window.print());
+  $('printButton').addEventListener('click', () => { if ($('printDate')) $('printDate').textContent = new Date().toLocaleDateString('en-GB'); window.print(); });
   $('type').addEventListener('change', updateTypeFields);
   $('jointCountMode').addEventListener('change', updateJointFields);
   $('fittingDuctType').addEventListener('change', updateFittingTypeFields);
@@ -506,6 +606,11 @@
   $('addFittingButton').addEventListener('click', addFitting);
   $('clearFittingButton').addEventListener('click', clearFittingForm);
   $('closeFormulaButton').addEventListener('click', () => { $('formulaViewer').hidden = true; });
+  $('confirmReview').addEventListener('click', confirmReview);
+  $('cancelReview').addEventListener('click', closeReview);
+  $('cancelReviewBottom').addEventListener('click', closeReview);
+  ['boqSearch', 'boqItemType', 'boqStatus', 'boqJointBasis', 'boqJointType'].forEach(id => $(id).addEventListener('input', render));
+  $('clearBoqFilters').addEventListener('click', () => { $('boqSearch').value = ''; $('boqItemType').value = 'ALL'; $('boqStatus').value = 'ALL'; $('boqJointBasis').value = 'ALL'; $('boqJointType').value = 'ALL'; render(); });
   $('sheetMaterial').addEventListener('change', () => showStatus('تم تحديث كثافة المادة المستخدمة في حساب الوزن.', 'success'));
 
   items = loadItems();

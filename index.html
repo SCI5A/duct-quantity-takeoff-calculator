@@ -15,6 +15,10 @@
     <p>Duct Quantity &amp; Accessories Calculator</p>
   </div>
 </header>
+<nav class="section-nav" aria-label="التنقل السريع">
+  <a href="#settingsSection">الإعدادات</a><a href="#ductSection">إضافة Duct</a><a href="#fittingSection">إضافة Fitting</a><a href="#summarySection">الإجماليات</a><a href="#boqSection">BOQ</a><a href="#formulaViewer">المعادلات</a>
+</nav>
+<div class="print-report-header" aria-hidden="true"><img src="assets/images/al-seraj-logo.png" alt=""><div><strong>AL-SERAJ INDUSTRIAL EQUIPMENT</strong><span>السراج للتجهيزات الصناعية</span><h2>Duct Quantity &amp; Accessories Calculator</h2></div><time id="printDate"></time></div>
 <main>
   <section class="card presentation-entry">
     <h2>العرض التعليمي</h2>
@@ -24,7 +28,7 @@
 
   <p id="status" class="status" role="status" aria-live="polite" hidden></p>
 
-  <section class="card" aria-labelledby="settingsTitle">
+  <section class="card" id="settingsSection" aria-labelledby="settingsTitle">
     <h2 id="settingsTitle">إعدادات الاستهلاك</h2>
     <div class="grid">
       <div><label for="waste">هالك الدكت %</label><input id="waste" type="number" value="10" min="0" step=".1" inputmode="decimal"></div>
@@ -38,7 +42,7 @@
     <p class="note">عدّل المعدلات حسب Technical Data Sheet للمادة. الكثافة تُستخدم لحساب الوزن، ولا تغيّر مساحة الدكت.</p>
   </section>
 
-  <section class="card" aria-labelledby="ductTitle">
+  <section class="card" id="ductSection" aria-labelledby="ductTitle">
     <h2 id="ductTitle">إضافة دكت</h2>
     <div class="grid">
       <div><label for="type">نوع الدكت</label><select id="type"><option value="rect">مستطيل</option><option value="round">دائري</option></select></div>
@@ -49,23 +53,24 @@
       <div><label for="qty">العدد</label><input id="qty" type="number" min="1" step="1" value="1" inputmode="numeric"></div>
       <div><label for="th">سماكة الصاج mm</label><input id="th" type="number" min=".01" value=".8" step=".1" inputmode="decimal"></div>
       <div><label for="insTh">سماكة العزل mm</label><input id="insTh" type="number" min="0" value="25" step=".1" inputmode="decimal"></div>
-      <div><label for="jointCountMode">أساس حساب الوصلات</label><select id="jointCountMode"><option value="PER_RUN">PER RUN — لكل مسار</option><option value="GLOBAL">GLOBAL — إجمالي الطول</option><option value="MANUAL">MANUAL — إدخال صريح</option></select></div>
-      <div><label for="jointType">نوع الوصلة</label><select id="jointType"><option value="">اختر نوع الوصلة</option><option value="TDF">TDF</option><option value="TDC">TDC</option><option value="ANGLE_FLANGE">Angle Flange</option><option value="SLIP_JOINT">Slip Joint</option><option value="CUSTOM">Custom</option></select></div>
-      <div id="fabricationLengthField"><label for="fabricationLength">طول التصنيع Fabrication Length m</label><input id="fabricationLength" type="number" min=".01" step=".01" inputmode="decimal"></div>
-      <div id="manualJointCountField" hidden><label for="manualJointCount">عدد الوصلات اليدوي</label><input id="manualJointCount" type="number" min="0" step="1" inputmode="numeric"></div>
-      <div><label for="boltSpacing">تباعد البراغي Bolt Spacing mm</label><input id="boltSpacing" type="number" min=".01" step=".1" inputmode="decimal"></div>
-      <div><label for="pressureClass">Pressure Class</label><select id="pressureClass"><option value="">غير محدد</option><option value="medium">Medium</option></select></div>
+      <div><label for="jointCountMode">أساس حساب الوصلات</label><select id="jointCountMode" aria-describedby="jointGuidance"><option value="PER_RUN">PER RUN — لكل مسار</option><option value="GLOBAL">GLOBAL — إجمالي الطول</option><option value="MANUAL">MANUAL — إدخال صريح</option></select></div>
+      <div><label for="jointType">نوع الوصلة</label><select id="jointType" aria-describedby="jointGuidance"><option value="">اختر نوع الوصلة</option><option value="TDF">TDF</option><option value="TDC">TDC</option><option value="ANGLE_FLANGE">Angle Flange</option><option value="SLIP_JOINT">Slip Joint</option><option value="CUSTOM">Custom</option></select></div>
+      <div id="fabricationLengthField" class="conditional-field"><label for="fabricationLength">طول التصنيع Fabrication Length m</label><input id="fabricationLength" type="number" min=".01" step=".01" inputmode="decimal" aria-describedby="fabricationLengthHelp"><small id="fabricationLengthHelp" class="field-help">مطلوب لحساب الأقسام عندما يكون الأساس PER RUN أو GLOBAL.</small></div>
+      <div id="manualJointCountField" class="conditional-field" hidden><label for="manualJointCount">عدد الوصلات اليدوي</label><input id="manualJointCount" type="number" min="0" step="1" inputmode="numeric" aria-describedby="manualJointCountHelp"><small id="manualJointCountHelp" class="field-help">مطلوب لأن أساس الوصلات = MANUAL.</small></div>
+      <div class="conditional-field"><label for="boltSpacing">تباعد البراغي Bolt Spacing mm</label><input id="boltSpacing" type="number" min=".01" step=".1" inputmode="decimal" aria-describedby="boltSpacingHelp"><small id="boltSpacingHelp" class="field-help">اختياري؛ عند غيابه تظهر حالة INPUT_REQUIRED للبراغي.</small></div>
+      <div class="conditional-field"><label for="pressureClass">Pressure Class</label><select id="pressureClass" aria-describedby="pressureClassHelp"><option value="">غير محدد</option><option value="medium">Medium</option></select><small id="pressureClassHelp" class="field-help">مدخل أساس فقط؛ لا يغيّر الكميات تلقائيًا دون قاعدة موثقة.</small></div>
       <input id="joints" type="hidden" value="0">
     </div>
+    <p id="ductInputError" class="field-error" role="alert" hidden></p>
     <div class="actions">
-      <button class="primary" id="addButton" type="button">إضافة</button>
+      <button class="primary" id="addButton" type="button">مراجعة قبل الإضافة</button>
       <button class="secondary" id="clearButton" type="button">مسح</button>
       <button class="danger" id="clearAllButton" type="button">حذف الكل</button>
     </div>
-    <p class="note">في PER RUN يُحسب التصنيع لكل مسار مستقل، وفي GLOBAL من إجمالي الطول، وفي MANUAL يُحترم العدد اليدوي. نوع الوصلة مطلوب، وتباعد البراغي اختياري ويظهر كـ INPUT REQUIRED عند غيابه.</p>
+    <p class="note" id="jointGuidance">في PER RUN يُحسب التصنيع لكل مسار مستقل، وفي GLOBAL من إجمالي الطول، وفي MANUAL يُحترم العدد اليدوي. نوع الوصلة مطلوب، وتباعد البراغي اختياري ويظهر كـ INPUT REQUIRED عند غيابه.</p>
   </section>
 
-  <section class="card" aria-labelledby="fittingTitle">
+  <section class="card" id="fittingSection" aria-labelledby="fittingTitle">
     <h2 id="fittingTitle">إضافة Fitting</h2>
     <div class="grid">
       <div><label for="fittingType">نوع الـFitting</label><select id="fittingType"><option value="">اختر النوع</option><option value="ELBOW">Elbow</option><option value="TEE">Tee</option><option value="REDUCER">Reducer</option><option value="TRANSITION">Transition</option><option value="OFFSET">Offset</option><option value="END_CAP">End Cap</option><option value="CUSTOM_FITTING">Custom Fitting</option></select></div>
@@ -87,12 +92,14 @@
       <div><label for="fittingPressure">Pressure Class</label><select id="fittingPressure"><option value="">غير محدد</option><option value="medium">Medium</option></select></div>
       <div><label for="fittingMaterial">مادة الصاج</label><select id="fittingMaterial"><option value="galvanized">Galvanized steel — 7850 kg/m³</option><option value="aluminum">Aluminum — 2700 kg/m³</option><option value="stainless">Stainless steel — 8000 kg/m³</option></select></div>
     </div>
-    <div class="actions"><button class="primary" id="addFittingButton" type="button">إضافة Fitting</button><button class="secondary" id="clearFittingButton" type="button">مسح Fitting</button></div>
+    <p id="fittingInputError" class="field-error" role="alert" hidden></p>
+    <div class="actions"><button class="primary" id="addFittingButton" type="button">مراجعة قبل الإضافة</button><button class="secondary" id="clearFittingButton" type="button">مسح Fitting</button></div>
     <p class="note">لا تُستخدم معادلة الدكت المستقيم للـFittings غير الموثقة. عند غياب هندسة أو قاعدة تصنيع، تظهر النتيجة INPUT_REQUIRED بدل التخمين.</p>
   </section>
 
-  <section class="card" aria-labelledby="summaryTitle">
+  <section class="card" id="summarySection" aria-labelledby="summaryTitle">
     <h2 id="summaryTitle">الإجماليات</h2>
+    <div id="executiveStatusPanel" class="executive-status-panel" aria-live="polite"></div>
     <div class="summary" id="summary"></div>
     <div class="actions"><button class="secondary" id="csvButton" type="button">تصدير CSV</button><button class="secondary" id="printButton" type="button">طباعة / PDF</button></div>
   </section>
@@ -103,8 +110,17 @@
     <div class="formula-grid" id="formulaContent"></div>
   </section>
 
-  <section class="card" aria-labelledby="boqTitle">
-    <h2 id="boqTitle">BOQ — جدول الكميات</h2>
+  <section class="card" id="boqSection" aria-labelledby="boqTitle">
+    <div class="section-heading"><h2 id="boqTitle">BOQ — جدول الكميات</h2><span id="boqResultCount" class="table-count" aria-live="polite"></span></div>
+    <div class="boq-filters" aria-label="تصفية BOQ">
+      <div><label for="boqSearch">بحث</label><input id="boqSearch" type="search" placeholder="ابحث بالنوع أو المقاس أو المصدر" aria-describedby="boqFiltersHelp"></div>
+      <div><label for="boqItemType">نوع البند</label><select id="boqItemType"><option value="ALL">الكل</option><option value="DUCT">Duct</option><option value="FITTING">Fitting</option><option value="ACCESSORY">Accessory status</option></select></div>
+      <div><label for="boqStatus">الحالة الهندسية</label><select id="boqStatus"><option value="ALL">كل الحالات</option><option value="CALCULATED">CALCULATED</option><option value="ESTIMATED">ESTIMATED</option><option value="INPUT_REQUIRED">INPUT_REQUIRED</option><option value="UNVERIFIED">UNVERIFIED</option><option value="LEGACY_ESTIMATE">LEGACY_ESTIMATE</option></select></div>
+      <div><label for="boqJointBasis">أساس الوصلات</label><select id="boqJointBasis"><option value="ALL">الكل</option><option value="PER_RUN">PER RUN</option><option value="GLOBAL">GLOBAL</option><option value="MANUAL">MANUAL</option></select></div>
+      <div><label for="boqJointType">نوع الوصلة</label><select id="boqJointType"><option value="ALL">الكل</option><option value="TDF">TDF</option><option value="TDC">TDC</option><option value="ANGLE_FLANGE">Angle Flange</option><option value="SLIP_JOINT">Slip Joint</option><option value="CUSTOM">Custom</option></select></div>
+      <button class="secondary" id="clearBoqFilters" type="button">مسح الفلاتر</button>
+    </div>
+    <p id="boqFiltersHelp" class="note">الفلاتر للعرض والمراجعة فقط، ولا تحذف أو تغيّر بيانات BOQ الأصلية.</p>
     <div class="tableWrap">
       <table>
         <caption class="sr-only">جدول صافي الكميات والهالك وكميات التوريد والملحقات</caption>
@@ -121,7 +137,7 @@
     </div>
   </section>
 
-  <section class="card" aria-labelledby="accessoryDetailsTitle">
+  <section class="card" id="accessoryDetailsSection" aria-labelledby="accessoryDetailsTitle">
     <h2 id="accessoryDetailsTitle">Accessory Detail — تفاصيل الملحقات</h2>
     <div class="tableWrap">
       <table>
@@ -134,6 +150,14 @@
     </div>
   </section>
 </main>
+<section id="reviewDialog" class="review-dialog" role="dialog" aria-modal="true" aria-labelledby="reviewTitle" hidden>
+  <div class="review-dialog-content">
+    <div class="section-heading"><h2 id="reviewTitle">Review Before Add</h2><button class="secondary" id="cancelReview" type="button">العودة للتعديل</button></div>
+    <p class="note">هذه مراجعة للبيانات الناتجة من النظام الحالي قبل الحفظ. لا تتم إعادة الحساب هنا.</p>
+    <dl id="reviewDetails" class="review-details"></dl>
+    <div class="review-actions"><button class="primary" id="confirmReview" type="button">Confirm &amp; Add</button><button class="secondary" id="cancelReviewBottom" type="button">Back to Edit</button></div>
+  </div>
+</section>
 <footer>Duct Quantity &amp; Accessories Calculator — GitHub Pages</footer>
 <noscript><p class="noscript">يحتاج التطبيق إلى JavaScript ليعمل.</p></noscript>
 <script src="assets/js/calculations.js"></script>

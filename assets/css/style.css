@@ -35,6 +35,26 @@ th{background:#eef3f8;white-space:nowrap}
 td .compact-button{padding:7px 9px;margin:2px;font-size:12px}
 footer{text-align:center;color:#6d7a88;font-size:12px;padding:20px}
 .presentation-link{display:inline-flex;align-items:center;text-decoration:none;padding:10px 14px;border-radius:9px;font-weight:700}
+.section-nav{position:sticky;top:0;z-index:20;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;padding:8px 14px;background:#e8eef5;border-bottom:1px solid #cbd5df}
+.section-nav a{color:#18344f;text-decoration:none;font-weight:700;font-size:13px;padding:7px 10px;border-radius:7px}
+.section-nav a:hover,.section-nav a:focus-visible{background:#d4e4f2}
+.field-help{display:block;margin-top:5px;color:#687789;font-size:11px;line-height:1.4}
+.field-error{margin:10px 0 0;padding:9px 11px;background:#fff0f0;color:#a12626;border:1px solid #e7a4a4;border-radius:8px;font-weight:700}
+.conditional-field{border:1px dashed #cbd5df;padding:9px;border-radius:8px;background:#fbfcfe}
+.executive-status-panel{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:8px;margin:0 0 14px}
+.executive-metric{padding:10px 12px;border-radius:9px;background:#f0f6fc;border:1px solid #d7e3ef}
+.executive-metric span{display:block;font-size:12px;color:#617286;font-weight:700}
+.executive-metric strong{display:block;font-size:21px;margin-top:3px;color:#18344f}
+.executive-metric.estimated{background:#fff8e6;border-color:#f1d58a}.executive-metric.input-required,.executive-metric.unverified,.executive-metric.attention{background:#fff0f0;border-color:#e7a4a4}.executive-metric.calculated{background:#e5f6ed;border-color:#a9d9bd}
+.boq-filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;align-items:end;margin:0 0 8px;padding:12px;background:#f7fafe;border:1px solid #dbe6f0;border-radius:10px}
+.boq-filters button{min-height:42px}
+.table-count{font-size:12px;color:#617286;font-weight:700}
+.status-cell{font-weight:700}.status-cell[data-status="ESTIMATED"]{background:#fff8e6;color:#8a5b00}.status-cell[data-status="INPUT_REQUIRED"],.status-cell[data-status="UNVERIFIED"]{background:#fff0f0;color:#a12626}.status-cell[data-status="LEGACY_ESTIMATE"]{background:#f2edf8;color:#68428a}.status-cell[data-status="CALCULATED"]{background:#e5f6ed;color:#176b42}
+.review-dialog{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:18px;background:#18344fcc}.review-dialog[hidden]{display:none!important}
+.review-dialog-content{width:min(760px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:14px;padding:18px;box-shadow:0 12px 40px #0005}
+.review-details{display:grid;grid-template-columns:minmax(150px,.7fr) 1.3fr;gap:0;margin:14px 0;border:1px solid #dbe3eb;border-radius:9px;overflow:hidden}
+.review-details dt,.review-details dd{margin:0;padding:9px;border-bottom:1px solid #e4e9ef}.review-details dt{font-weight:700;background:#f0f6fc}.review-details dd{overflow-wrap:anywhere}.review-actions{display:flex;gap:8px;flex-wrap:wrap}
+.print-report-header{display:none}
 .section-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .formula-card{border:2px solid #1677c8}
 .formula-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
@@ -45,6 +65,11 @@ footer{text-align:center;color:#6d7a88;font-size:12px;padding:20px}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .noscript{max-width:900px;margin:20px auto;padding:14px;background:#fff0f0;color:#a12626;border-radius:10px}
 @media(max-width:600px){
+  .section-nav{justify-content:flex-start;overflow-x:auto;flex-wrap:nowrap;white-space:nowrap;scrollbar-width:thin}
+  .section-nav a{flex:0 0 auto}
+  .boq-filters{grid-template-columns:1fr}
+  .review-details{grid-template-columns:1fr}
+  .review-details dt{border-bottom:0;padding-bottom:3px}.review-details dd{padding-top:3px}
   .site-header{min-height:92px;padding:16px 10px}
   .header-copy{max-width:calc(100% - 125px)}
   .brand-logo{top:10px;left:10px;width:96px;max-height:70px}
@@ -54,9 +79,15 @@ footer{text-align:center;color:#6d7a88;font-size:12px;padding:20px}
   .section-heading{align-items:flex-start}
   .formula-grid{grid-template-columns:1fr}
 }
+@page{size:A4 portrait;margin:12mm}
 @media print{
-  .actions,footer,.presentation-entry,.status{display:none!important}
-  body{background:#fff;padding-top:18mm}
+  .site-header{display:none!important}
+  .section-nav,.actions,footer,.presentation-entry,.status,.boq-filters,.boq-filters + .note,.review-dialog{display:none!important}
+  .print-report-header{display:flex;align-items:center;gap:8mm;padding:0 0 4mm;margin:0 0 5mm;border-bottom:1px solid #d9e1e8;direction:ltr;text-align:left}
+  .print-report-header img{width:25mm;height:18mm;object-fit:contain;flex:0 0 25mm}
+  .print-report-header div{display:flex;flex-direction:column;min-width:0;direction:rtl;text-align:right;line-height:1.25}
+  .print-report-header strong{font-size:11px;color:#18344f}.print-report-header span{font-size:10px;color:#617286}.print-report-header h2{font-size:15px;margin:2mm 0 0;color:#182230}.print-report-header time{margin-left:auto;font-size:9px;color:#617286;white-space:nowrap}
+  body{background:#fff;padding-top:0}
   .card{box-shadow:none}
   .site-header{
     min-height:26mm;
